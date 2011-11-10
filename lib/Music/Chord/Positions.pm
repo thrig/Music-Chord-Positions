@@ -12,6 +12,22 @@ sub new {
   $class->SUPER::new();
 }
 
+# TODO options for voices (could be > = < than pitch set), whether to
+# allow doubling and if so on what degrees (root, 5th, 3rd, ..., all)
+# doubling is allowed. Ohh, also top limit for voicings, as computers
+# could numerate voices out to crazy spans (3 would be a good limit for
+# 5ths, as Theory of Harmony only extends open position to 2+5th, might
+# need more for 13th chords). Also means to limit by 'closed' or 'open'
+# position definition from ToH, etc.
+#
+# And whether chords suit SATB vocal ranges or not (or how well?) hmm.
+sub chord_pos {
+  my ( $self, $chord ) = @_;
+
+  my @pitches = $self->SUPER::chord_num($chord);
+  return @pitches;
+}
+
 # Preloaded methods go here.
 
 1;

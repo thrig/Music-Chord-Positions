@@ -4,7 +4,7 @@ use warnings;
 use Test::More tests => 4;
 BEGIN { use_ok('Music::Chord::Positions') }
 
-can_ok( 'Music::Chord::Positions', qw/new/ );
+can_ok( 'Music::Chord::Positions', qw/new chord_pos/ );
 
 my $mcp = Music::Chord::Positions->new();
 
