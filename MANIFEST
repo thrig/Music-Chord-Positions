@@ -1,0 +1,5 @@
+Makefile.PL
+MANIFEST
+README
+t/Music-Chord-Positions.t
+lib/Music/Chord/Positions.pm
