@@ -1,18 +1,18 @@
-# Before `make install' is performed this script should be runnable with
-# `make test'. After `make install' it should work as `perl Music-Chord-Positions.t'
-
-#########################
-
-# change 'tests => 1' to 'tests => last_test_to_print';
-
 use strict;
 use warnings;
 
-use Test::More tests => 1;
-BEGIN { use_ok('Music::Chord::Positions') };
+use Test::More tests => 4;
+BEGIN { use_ok('Music::Chord::Positions') }
 
-#########################
+can_ok( 'Music::Chord::Positions', qw/new/ );
 
-# Insert your test code below, the Test::More module is use()ed here so read
-# its man page ( perldoc Test::More ) for help writing this test script.
+my $mcp = Music::Chord::Positions->new();
 
+# Check that parent behaves as expected, breakage here would indicate
+# Music::Chord::Note has changed interface since 0.0.6.
+{
+  isa_ok( $mcp, 'Music::Chord::Note' );
+
+  is( join( q{,}, $mcp->chord_num() ),
+    '0,4,7', 'check chord_num from parent' );
+}
