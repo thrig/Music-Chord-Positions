@@ -2,8 +2,8 @@ use ExtUtils::MakeMaker;
 
 my %params = (
   NAME         => 'Music::Chord::Positions',
-  VERSION_FROM => 'lib/Music/Chord/Positions.pm',  # finds $VERSION
-  PREREQ_PM    => { Music::Chord::Note => 0.0.6 }, # e.g., Module::Name => 1.1
+  VERSION_FROM => 'lib/Music/Chord/Positions.pm',
+  PREREQ_PM    => { Music::Chord::Note => 0 },   # not a req, but nice to have
   ( $] >= 5.005
     ?    ## Add these new keywords supported since 5.005
       (
