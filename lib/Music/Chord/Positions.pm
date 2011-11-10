@@ -28,7 +28,9 @@ sub chord_pos {
   return @pitches;
 }
 
-# Preloaded methods go here.
+# TODO new class for PitchSet return, then means to filter (open,
+# closed, vocalizable) or format (MIDI, lilypond, etc) those sets
+# instead of polluting call to chord_pos?
 
 1;
 __END__
