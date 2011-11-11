@@ -4,7 +4,7 @@ use strict;
 use warnings;
 
 use Carp qw(croak);
-use List::Util qw(min max);
+use List::Util qw(max min);
 
 our $VERSION = '0.01';
 
@@ -16,8 +16,8 @@ sub new {
 }
 
 sub chord_inv {
-  my ( $self, $pitch_set, %params ) = @_;
-  croak "chord_inv requires a pitch set"
+  my ( $self, $pitch_set ) = @_;
+  croak "pitch set reference required"
     unless defined $pitch_set and ref $pitch_set eq 'ARRAY';
 
   my $max_pitch   = max(@$pitch_set);
@@ -33,8 +33,9 @@ sub chord_inv {
       map { $next_octave + $_ } @$pitch_set[ 0 .. $i ]
       ];
 
-    # Normalize to "0th" register if lowest pitch is an octave+ out    TODO
-    # not sure if I want this change, as it is display/output related.       :/
+    # Normalize to "0th" register if lowest pitch is an octave+ out
+    # TODO this is a output/display issue, move to formating routines if
+    # write those.
     #   my $min_pitch = min( @{ $inversions[-1] } );
     #   if ( $min_pitch >= $DEG_IN_SCALE ) {
     #     my $offset = $min_pitch - $min_pitch % $DEG_IN_SCALE;
@@ -54,37 +55,58 @@ sub chord_inv {
 # position definition from ToH, etc.
 #
 # And whether chords suit SATB vocal ranges or not (or how well?) hmm.
+# That would be a filter question, not generation or output?
 sub chord_pos {
   my ( $self, $pitch_set, %params ) = @_;
-
-  croak "chord_pos requires a pitch set"
+  croak "pitch set reference required"
     unless defined $pitch_set and ref $pitch_set eq 'ARRAY';
 
-  # DBG until I figure out how to handle 3 or 5 or what (unset would
-  # imply to take the # of "voices" from the chord?)
-  $params{'-voices'} = 4;
-  $params{'-factor'} = 3;    # TODO need better name
+  # DBG TODO need better name for how high above can go
+  $params{'-factor'} = 3;
 
   if ( @$pitch_set > $params{'-voices'} ) {
     # as would need to figure out what are the permitted doublings, etc.
-    croak
-      "case where pitches in chord exceedes allowed voices not implemented\n";
+    die "case where pitches in chord exceedes allowed voices not implemented";
   }
 
-  my $max_interval = max @$pitch_set;
+  my $max_pitch     = max(@$pitch_set);
+  my $next_octave   = $max_pitch + $DEG_IN_SCALE - $max_pitch % $DEG_IN_SCALE;
+  my $voicing_limit = $next_octave * $params{'-factor'};
 
-  # How high above fundamental to allow
-  my $voicing_limit =
-    ( $max_interval + $DEG_IN_SCALE - $max_interval % $DEG_IN_SCALE ) *
-    $params{'-factor'};
+  if ( $params{'-voices'} > @$pitch_set ) {
+    my $doubled_count = $params{'-voices'} - @$pitch_set;
+    die "extra voices beyond one not implemented" if $doubled_count > 1;
 
-  if ( @$pitch_set < $params{'-voices'} ) {
-    # TODO if delta 1 easy just add octave, what to do if 5 voices for a 3
-    # pitch chord?
+    # Double lowest pitch in octave above higest pitch C E G -> C E G C
+    push @$pitch_set, $next_octave + min(@$pitch_set);
   }
 
   # Calculate different positions (revoicing, same fundamental tone).
   my @revoicings;
+  push @revoicings, [ sort { $a <=> $b } @$pitch_set ];
+
+  while (1) {
+    # This method works for close positions (static root), does not
+    # generate open positions. Instead generate all possible w/in a
+    # specified range of registers?
+
+    my $pitchup = $revoicings[-1][1] + $DEG_IN_SCALE;
+    # Will need to rethink how to handle if encounter
+    if ( $pitchup < max( @{ $revoicings[-1] } ) ) {
+      die "unexpected new pitch less than existing max: $pitchup vs "
+        . join ',', @{ $revoicings[-1] };
+    }
+    last if $pitchup >= $voicing_limit;
+
+    # TODO also will need to check if anything literal doubled, or
+    # doubled in different registers (beyond those allowed, e.g. octave
+    # or more depending on the rules involved).
+
+    push @revoicings,
+      [ @{ $revoicings[-1] }[ 0, 2 .. $#{ $revoicings[-1] } ], $pitchup ];
+
+    # TODO tweak if fundamental too far below? audit output vs. ToH
+  }
 
   return @revoicings;
 }
@@ -94,23 +116,35 @@ __END__
 
 =head1 NAME
 
-Music::Chord::Positions - generates various chord voicings
+Music::Chord::Positions - generate various chord inversions and voicings
 
 =head1 SYNOPSIS
 
   use Music::Chord::Positions;
   my $mcp = Music::Chord::Positions->new();
 
-  TODO
+  my @inverses = $mcp->chord_inv([0,4,7]);
+  my @voicings = $mcp->chord_pos([0,4,7]);
 
 =head1 DESCRIPTION
 
-Given a set of semitone intervals (as an array ref), generates alternate
-voicings for those pitches in the modern Western system. The voicings
-(TODO will) include closed or open position variations (up to an upper
-limit), and inversions. The pitch set may be specified manually, or the
-B<chord_num> method of L<Music::Chord::Note> used to derive a pitch set
-from a named chord.
+Utility methods for generating inversions or chord voicing variations of
+a given pitch set. A pitch set is an array reference consisting of
+semitone intervals that could constitute some sort of chord.
+
+  [0, 4, 7]      # Major      C  E  G
+  [0, 3, 7]      # minor      C  D# G
+  [0, 4, 7, 11]  # Major 7th  C  E  G  B
+
+The pitch set may be specified manually, or the B<chord_num> method of
+L<Music::Chord::Note> used to derive a pitch set from a named chord. So
+the following should result in identical lists of inversions of C minor.
+
+  my @ps = (0,3,7);
+  $mcp->chord_inv(\@ps);
+
+  use Music::Chord::Note;
+  $mcp->chord_inv([ Music::Chord::Note->new->chord_num('Cm') ]);
 
 =head1 SEE ALSO
 

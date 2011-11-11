@@ -9,6 +9,10 @@ can_ok( 'Music::Chord::Positions', qw/new chord_inv chord_pos/ );
 my $mcp = Music::Chord::Positions->new();
 isa_ok( $mcp, 'Music::Chord::Positions' );
 
+########################################################################
+#
+# chord_inv tests
+
 # 5th should generate 1st and 2nd inversions
 my @inversions = $mcp->chord_inv( [ 0, 4, 7 ] );
 is_deeply(
@@ -39,3 +43,10 @@ is_deeply(
 #
 # TODO also 15th, 17th chords to make sure 2x octave spans handled
 # correctly.
+# TODO also 8th or [0,4,7,12] which gets into how doubling is handled!
+
+########################################################################
+#
+# chord_pos tests
+
+use Data::Dumper; diag Dumper [ $mcp->chord_pos( [ 0, 4, 7 ], -voices => 4 ) ];
