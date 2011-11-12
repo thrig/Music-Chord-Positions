@@ -23,7 +23,7 @@ sub chord_inv {
 
   my ( @inversions, $max_pitch, $next_register );
 
-  $max_pitch   = max(@$pitch_set);
+  $max_pitch     = max(@$pitch_set);
   $next_register = $max_pitch + $DEG_IN_SCALE - $max_pitch % $DEG_IN_SCALE;
 
   for my $i ( 0 .. $#$pitch_set - 1 ) {
@@ -65,10 +65,15 @@ sub chord_pos {
 
   # TODO cleanup/reorder
   my ( @ps, $min_pitch_norm, $unique_pitch_count, @potentials, @revoicings,
-    $next_register, $voicing_limit );
+    $next_register );
 
   $params{'-iinterval-max'} ||= 19;
-  $params{'-octaves'}       ||= 3;
+
+  if ( exists $params{'-octaves'} ) {
+    $params{'-octaves'} = 2 if $params{'-octaves'} < 2;
+  } else {
+    $params{'-octaves'} = 2;
+  }
 
   if ( exists $params{'-voices'} ) {
     if ( @$pitch_set > $params{'-voices'} ) {
@@ -82,9 +87,8 @@ sub chord_pos {
   @ps = sort { $a <=> $b } @$pitch_set;
 
   $min_pitch_norm     = $ps[0] % $DEG_IN_SCALE;
-  $next_register        = $ps[-1] + ( $DEG_IN_SCALE - $ps[-1] % $DEG_IN_SCALE );
+  $next_register      = $ps[-1] + ( $DEG_IN_SCALE - $ps[-1] % $DEG_IN_SCALE );
   $unique_pitch_count = sum( uniq( map { $_ % $DEG_IN_SCALE } @ps ) );
-  $voicing_limit      = $next_register * ( $params{'-octaves'} - 1 );
 
   if ( $params{'-voices'} > @ps ) {
     my $doubled_count = $params{'-voices'} - @ps;
@@ -102,8 +106,14 @@ sub chord_pos {
   }
   @potentials = uniq sort { $a <=> $b } @potentials;
 
+  my ( @voice_iters, @voice_max );
+  for my $i ( 0 .. $params{'-voices'} - 1 ) {
+    $voice_iters[$i] = $params{'-voices'} - 1;
+    $voice_max[$i]   = $#potentials - $params{'-voices'} + $i;
+  }
+
   while (1) {
-    # TODO write loop/state instead of nested for (static voices) or recursive
+    last if $voice_iters[0] == $voice_max[0];
   }
 
   return @revoicings;

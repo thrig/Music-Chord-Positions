@@ -51,14 +51,14 @@ is_deeply(
 
 my @p = $mcp->chord_pos( [ 0, 4, 7 ], -voices => 4 );
 
-my %conv = qw( 0 c 1 cis 2 d 3 cis 4 e 5 f 6 fis 7 g 8 gis 9 a 10 ais 11 b );
-my %regi = ( 0, ",", 1, "", 2, "'", 3, "''", 4, "'''" );
-for my $pr (@p) {
-  for my $n (@$pr) {
-    my $nn = $conv{$n%12};
-    my $r  = $regi{int($n/12)};
-    $n = $nn.$r;
-  }
-}
+#my %conv = qw( 0 c 1 cis 2 d 3 cis 4 e 5 f 6 fis 7 g 8 gis 9 a 10 ais 11 b );
+#my %regi = ( 0, ",", 1, "", 2, "'", 3, "''", 4, "'''" );
+#for my $pr (@p) {
+#  for my $n (@$pr) {
+#    my $nn = $conv{$n%12};
+#    my $r  = $regi{int($n/12)};
+#    $n = $nn.$r;
+#  }
+#}
 $Data::Dumper::Useqq = 1;
 use Data::Dumper; diag Dumper \@p;
