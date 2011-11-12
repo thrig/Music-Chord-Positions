@@ -4,7 +4,8 @@ use strict;
 use warnings;
 
 use Carp qw(croak);
-use List::Util qw(max min);
+use List::MoreUtils qw(uniq);
+use List::Util qw(max min sum);
 
 our $VERSION = '0.01';
 
@@ -20,17 +21,18 @@ sub chord_inv {
   croak "pitch set reference required"
     unless defined $pitch_set and ref $pitch_set eq 'ARRAY';
 
-  my $max_pitch   = max(@$pitch_set);
-  my $next_octave = $max_pitch + $DEG_IN_SCALE - $max_pitch % $DEG_IN_SCALE;
+  my ( @inversions, $max_pitch, $next_register );
 
-  my @inversions;
+  $max_pitch   = max(@$pitch_set);
+  $next_register = $max_pitch + $DEG_IN_SCALE - $max_pitch % $DEG_IN_SCALE;
+
   for my $i ( 0 .. $#$pitch_set - 1 ) {
     # Inversions simply flip lower notes up above the highest pitch in
     # the original pitch set.
     push @inversions,
       [
       @$pitch_set[ $i + 1 .. $#$pitch_set ],
-      map { $next_octave + $_ } @$pitch_set[ 0 .. $i ]
+      map { $next_register + $_ } @$pitch_set[ 0 .. $i ]
       ];
 
     # Normalize to "0th" register if lowest pitch is an octave+ out
@@ -61,51 +63,47 @@ sub chord_pos {
   croak "pitch set reference required"
     unless defined $pitch_set and ref $pitch_set eq 'ARRAY';
 
-  # DBG TODO need better name for how high above can go
-  $params{'-factor'} = 3;
+  # TODO cleanup/reorder
+  my ( @ps, $min_pitch_norm, $unique_pitch_count, @potentials, @revoicings,
+    $next_register, $voicing_limit );
 
-  if ( @$pitch_set > $params{'-voices'} ) {
-    # as would need to figure out what are the permitted doublings, etc.
-    die "case where pitches in chord exceedes allowed voices not implemented";
+  $params{'-iinterval-max'} ||= 19;
+  $params{'-octaves'}       ||= 3;
+
+  if ( exists $params{'-voices'} ) {
+    if ( @$pitch_set > $params{'-voices'} ) {
+      die
+        "case where pitches in chord exceedes allowed voices not implemented";
+    }
+  } else {
+    $params{'-voices'} = @$pitch_set;
   }
 
-  my $max_pitch     = max(@$pitch_set);
-  my $next_octave   = $max_pitch + $DEG_IN_SCALE - $max_pitch % $DEG_IN_SCALE;
-  my $voicing_limit = $next_octave * $params{'-factor'};
+  @ps = sort { $a <=> $b } @$pitch_set;
 
-  if ( $params{'-voices'} > @$pitch_set ) {
-    my $doubled_count = $params{'-voices'} - @$pitch_set;
-    die "extra voices beyond one not implemented" if $doubled_count > 1;
+  $min_pitch_norm     = $ps[0] % $DEG_IN_SCALE;
+  $next_register        = $ps[-1] + ( $DEG_IN_SCALE - $ps[-1] % $DEG_IN_SCALE );
+  $unique_pitch_count = sum( uniq( map { $_ % $DEG_IN_SCALE } @ps ) );
+  $voicing_limit      = $next_register * ( $params{'-octaves'} - 1 );
+
+  if ( $params{'-voices'} > @ps ) {
+    my $doubled_count = $params{'-voices'} - @ps;
+    die "multiple extra voices not implemented" if $doubled_count > 1;
 
     # Double lowest pitch in octave above higest pitch C E G -> C E G C
-    push @$pitch_set, $next_octave + min(@$pitch_set);
+    push @ps, $next_register + $ps[0];
   }
 
-  # Calculate different positions (revoicing, same fundamental tone).
-  my @revoicings;
-  push @revoicings, [ sort { $a <=> $b } @$pitch_set ];
+  @potentials = @ps;
+  for my $i ( 1 .. $params{'-octaves'} ) {
+    for my $n (@ps) {
+      push @potentials, $n + $i * $DEG_IN_SCALE;
+    }
+  }
+  @potentials = uniq sort { $a <=> $b } @potentials;
 
   while (1) {
-    # This method works for close positions (static root), does not
-    # generate open positions. Instead generate all possible w/in a
-    # specified range of registers?
-
-    my $pitchup = $revoicings[-1][1] + $DEG_IN_SCALE;
-    # Will need to rethink how to handle if encounter
-    if ( $pitchup < max( @{ $revoicings[-1] } ) ) {
-      die "unexpected new pitch less than existing max: $pitchup vs "
-        . join ',', @{ $revoicings[-1] };
-    }
-    last if $pitchup >= $voicing_limit;
-
-    # TODO also will need to check if anything literal doubled, or
-    # doubled in different registers (beyond those allowed, e.g. octave
-    # or more depending on the rules involved).
-
-    push @revoicings,
-      [ @{ $revoicings[-1] }[ 0, 2 .. $#{ $revoicings[-1] } ], $pitchup ];
-
-    # TODO tweak if fundamental too far below? audit output vs. ToH
+    # TODO write loop/state instead of nested for (static voices) or recursive
   }
 
   return @revoicings;
