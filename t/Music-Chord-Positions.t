@@ -60,5 +60,4 @@ my @p = $mcp->chord_pos( [ 0, 4, 7 ], -voices => 4 );
 #    $n = $nn.$r;
 #  }
 #}
-$Data::Dumper::Useqq = 1;
-use Data::Dumper; diag Dumper \@p;
+use Data::Dump qw(dump); diag "hmmm"; diag dump $_ for @p;
