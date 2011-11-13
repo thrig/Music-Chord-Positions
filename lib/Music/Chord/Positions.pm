@@ -8,7 +8,7 @@ use Exporter ();
 use List::MoreUtils qw(uniq);
 use List::Util qw(max min);
 
-our $VERSION = '0.01';
+our $VERSION = '0.02';
 
 our ( @ISA, @EXPORT_OK, %EXPORT_TAGS );
 @ISA       = qw(Exporter);
