@@ -88,7 +88,7 @@ sub chord_pos {
 
   $min_pitch_norm     = $ps[0] % $DEG_IN_SCALE;
   $next_register      = $ps[-1] + ( $DEG_IN_SCALE - $ps[-1] % $DEG_IN_SCALE );
-  $unique_pitch_count = sum( uniq( map { $_ % $DEG_IN_SCALE } @ps ) );
+  $unique_pitch_count = ( uniq( map { $_ % $DEG_IN_SCALE } @ps ) );
 
   if ( $params{'-voices'} > @ps ) {
     my $doubled_count = $params{'-voices'} - @ps;
@@ -108,12 +108,37 @@ sub chord_pos {
 
   my ( @voice_iters, @voice_max );
   for my $i ( 0 .. $params{'-voices'} - 1 ) {
-    $voice_iters[$i] = $params{'-voices'} - 1;
-    $voice_max[$i]   = $#potentials - $params{'-voices'} + $i;
+    $voice_iters[$i] = $i;
+    $voice_max[$i]   = $#potentials - $params{'-voices'} + $i + 1;
   }
 
-  while (1) {
-    last if $voice_iters[0] == $voice_max[0];
+  while ( $voice_iters[0] <= $voice_max[0] ) {
+    while ( $voice_iters[-1] <= $voice_max[-1] ) {
+      my @chord = @potentials[@voice_iters];
+
+      push @revoicings, \@chord;
+      $voice_iters[-1]++;
+    }
+
+    # Increment any lower voices if top voice(s) maxxed out
+    for my $i ( reverse 1 .. $#voice_iters ) {
+      if ( $voice_iters[$i] > $voice_max[$i] ) {
+        $voice_iters[ $i - 1 ]++;
+      }
+    }
+
+    # Constrain root to just octaves of min pitch
+    while (
+      $potentials[ $voice_iters[0] ] % $DEG_IN_SCALE != $min_pitch_norm ) {
+      $voice_iters[0]++;
+    }
+
+    # Reset higher voices to close positions above lower voices
+    for my $i ( 1 .. $#voice_iters ) {
+      if ( $voice_iters[$i] > $voice_max[$i] ) {
+        $voice_iters[$i] = $voice_iters[ $i - 1 ] + 1;
+      }
+    }
   }
 
   return @revoicings;
