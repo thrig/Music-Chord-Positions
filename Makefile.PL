@@ -3,7 +3,13 @@ use ExtUtils::MakeMaker;
 my %params = (
   NAME         => 'Music::Chord::Positions',
   VERSION_FROM => 'lib/Music/Chord/Positions.pm',
-  PREREQ_PM    => { List::MoreUtils => 0, Music::Chord::Note => 0 },
+  PREREQ_PM    => {
+    Carp               => 0,
+    List::MoreUtils    => 0,
+    List::Util         => 0,
+    Music::Chord::Note => 0,    # nice to have, but not essential
+    Test::More         => 0,
+  },
   ( $] >= 5.005
     ?    ## Add these new keywords supported since 5.005
       (
