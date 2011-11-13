@@ -12,7 +12,7 @@ our $VERSION = '0.01';
 
 our ( @ISA, @EXPORT_OK, %EXPORT_TAGS );
 @ISA         = qw(Exporter);
-@EXPORT_OK   = qw(&chord_inv, &chord_pos &chords2voices);
+@EXPORT_OK   = qw(&chord_inv &chord_pos &chords2voices);
 %EXPORT_TAGS = ( all => [qw(chord_inv chord_pos chords2voices)] );
 
 my $DEG_IN_SCALE = 12;
