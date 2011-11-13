@@ -1,20 +1,32 @@
 #!/usr/bin/perl
 #
 # Accepts various inputs, applies Music::Chord::Positions functions to
-# that input, outputs lilypond data containing the results.
+# that input, outputs lilypond data containing the results. Example:
+#
+# mcp2ly -o inv 0 4 7 > foo.ly && lilypond foo.ly
 
 use strict;
 use warnings;
 
+use List::Util qw/sum/;
 use Getopt::Long qw/GetOptions/;
 use Music::Chord::Note ();
 use Music::Chord::Positions qw/:all/;
+use POSIX qw/floor/;
 
 my (
-  @voices, %modes,           $chord_spec,
-  $cn,     $ly_lower_voices, $ly_upper_voices,
-  $mode,   $omit_orig,       $pitch_set
+  %modes,               %pitch2note,      %registers,
+  $LY_DEFAULT_DURATION, $chord_spec,      $cn,
+  $ly_lower_voices,     $ly_upper_voices, $mode,
+  $omit_orig,           $pitch_set
 );
+
+$LY_DEFAULT_DURATION = 1;    # whole note
+
+%pitch2note =
+  qw( 0 c 1 cis 2 d 3 dis 4 e 5 f 6 fis 7 g 8 gis 9 a 10 ais 11 b );
+%registers =
+  ( 0 => "", 1 => "'", 2 => "''", 3 => "'''", 4 => "''''", 5 => "'''''" );
 
 %modes =
   ( inv => sub { chord_inv( $_[0] ) }, voc => sub { chord_pos( $_[0] ) } );
@@ -36,16 +48,42 @@ if ( $chord_spec =~ m/[A-Za-z()-]/ or $chord_spec =~ m/^\s*\d+\s*$/ ) {
   $pitch_set = \@pitches;
 }
 
+# Get voice lines, convert to lilypond format, figure out what staff the
+# voices should be in. TODO messy, really should be templated or part of
+# the module.
 {
-  my @chords = $modes{$mode}->($pitch_set);
+  my ( @chords, @voices, @uv, @lv );
+
+  @chords = $modes{$mode}->($pitch_set);
   unshift @chords, $pitch_set unless $omit_orig;
   @voices = chords2voices(@chords);
-}
 
-# TODO figure out average register for where to place voice (lower
-# or upper staff), divide out voices, sring render, ref those
-# scalars in template, print. Oh, and set "whole note" for first
-# notes of the voices.
+  for my $voice (@voices) {
+    my ( @registers, $mean_reg_num );
+    for my $pitch (@$voice) {
+      my $ly_pitch = $pitch2note{ $pitch % scale_deg() };
+      my $reg_num  = int( $pitch / scale_deg() );
+      push @registers, $reg_num;
+
+      $pitch = $ly_pitch . $registers{$reg_num};
+    }
+    my $mean_register = floor( sum(@registers) / @$voice + 0.5 );
+
+    $voice->[0] .= $LY_DEFAULT_DURATION;
+    if ( $mean_register > 0 ) {
+      push @uv, join " ", @$voice;
+    } else {
+      push @lv, join " ", @$voice;
+    }
+  }
+
+  if (@uv) {
+    $ly_upper_voices = "<< {\n" . join( "\n} \\\\ {\n", @uv ) . "\n} >>\n";
+  }
+  if (@lv) {
+    $ly_lower_voices = "<< {\n" . join( "\n} \\\\ {\n", @lv ) . "\n} >>\n";
+  }
+}
 
 print <<"END_TMPL";
 \\version "2.12.0"
