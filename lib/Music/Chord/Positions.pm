@@ -4,20 +4,21 @@ use strict;
 use warnings;
 
 use Carp qw(croak);
+use Exporter ();
 use List::MoreUtils qw(uniq);
 use List::Util qw(max min);
 
 our $VERSION = '0.01';
 
+our ( @ISA, @EXPORT_OK, %EXPORT_TAGS );
+@ISA         = qw(Exporter);
+@EXPORT_OK   = qw(&chord_inv, &chord_pos &chords2voices);
+%EXPORT_TAGS = ( all => [qw(chord_inv chord_pos chords2voices)] );
+
 my $DEG_IN_SCALE = 12;
 
-sub new {
-  my ($class) = @_;
-  bless {}, $class;
-}
-
 sub chord_inv {
-  my ( $self, $pitch_set ) = @_;
+  my ($pitch_set) = @_;
   croak "pitch set reference required"
     unless defined $pitch_set and ref $pitch_set eq 'ARRAY';
 
@@ -49,7 +50,7 @@ sub chord_inv {
 }
 
 sub chord_pos {
-  my ( $self, $pitch_set, %params ) = @_;
+  my ( $pitch_set, %params ) = @_;
   croak "pitch set reference required"
     unless defined $pitch_set and ref $pitch_set eq 'ARRAY';
 
@@ -160,6 +161,33 @@ sub chord_pos {
   return @revoicings;
 }
 
+# TODO allow this or equiv to be passed in? or accept a callback to
+# render the note, given pitch and register data?
+my %conversions = (
+  'lilypond' => {
+    'notes' =>
+      {qw( 0 c 1 cis 2 d 3 cis 4 e 5 f 6 fis 7 g 8 gis 9 a 10 ais 11 b )},
+    'registers' => { 0 => "", 1 => "'", 2 => "''", 3 => "'''", 4 => "''''" },
+    'whoops'    => 'r',
+  },
+);
+
+# Change a pitch set collection (vertical) into voices (horizontal)
+sub chords2voices {
+  my (@pitch_sets) = @_;
+  croak "not a list of pitch sets" unless ref $pitch_sets[0] eq 'ARRAY';
+
+  my @voices;
+
+  for my $vi ( 0 .. $#{ $pitch_sets[0] } ) {
+    for my $j ( 0 .. $#pitch_sets ) {
+      push @{ $voices[$vi] }, $pitch_sets[$j][$vi];
+    }
+  }
+
+  return reverse @voices;
+}
+
 1;
 __END__
 
@@ -169,20 +197,18 @@ Music::Chord::Positions - generate various chord inversions and voicings
 
 =head1 SYNOPSIS
 
-  use Music::Chord::Positions;
-  my $mcp = Music::Chord::Positions->new();
+  use Music::Chord::Positions qw/:all/;
 
-  my @inverses = $mcp->chord_inv([0,4,7]);
-  my @voicings = $mcp->chord_pos([0,4,7]);
+  my @inverses = chord_inv([0,4,7]);
+  my @voicings = chord_pos([0,4,7]);
 
-Converting the resulting lists of pitch sets to something useful left as
-an exercise to the user.
+Interface may be subject to change!
 
 =head1 DESCRIPTION
 
 Utility methods for generating inversions or chord voicing variations of
 a given pitch set. A pitch set is an array reference consisting of
-semitone intervals that could constitute some sort of chord.
+semitone intervals, for example:
 
   [0, 4, 7]      # Major      C  E  G
   [0, 3, 7]      # minor      C  D# G
@@ -192,18 +218,17 @@ Or whatever. The pitch set may be specified manually, or the
 B<chord_num> method of L<Music::Chord::Note> used to derive a pitch set
 from a named chord.
 
-  # These result in the same output from chord_inv()
-  my @ps = (0,3,7);
-  $mcp->chord_inv(\@ps);
-
+  use Music::Chord::Positions qw/:all/;
   use Music::Chord::Note;
-  $mcp->chord_inv([ Music::Chord::Note->new->chord_num('Cm') ]);
 
-=head1 METHODS
+  # These both result in the same output from chord_inv()
+  my @i1 = chord_inv([0,3,7]);
+  my @i2 = chord_inv([ Music::Chord::Note->new->chord_num('Cm') ]);
 
-Assuming the B<new> class method has been used to create a
-C<Music::Chord::Positions> object, the following methods are available
-from that object:
+=head1 SUBROUTINES
+
+Nothing exported by default. Use the fully qualified path, or import
+stuff. If OO desired, code something up?
 
 =over 4
 
@@ -220,12 +245,15 @@ problem, decrement the semitones in the pitch set by 12 or whatever.
 =item B<chord_pos>( I<pitch set reference>, I<list of optional parameters> ... )
 
 Generate different voicings of a different chord, by default in
-registers two above the base. Only voicings where the root remains in
-the root will be considered; chords that do not represent all pitches in
-the pitch set or chords that double non-root pitches will be excluded.
-Chords with intervals greater than 19 semitones (octave+fifth) between
-adjacent pitches will also be excluded, as will transpositions of the
-same voicing into higher registers.
+registers two above the base. Returns list of pitch sets (list of array
+references) in who knows what order.
+
+Only voicings where the root remains in the root will be considered;
+chords that do not represent all pitches in the pitch set or chords that
+double non-root pitches will be excluded. Chords with intervals greater
+than 19 semitones (octave+fifth) between adjacent pitches will also be
+excluded, as will transpositions of the same voicing into higher
+registers.
 
 The B<chord_pos> method can be influenced by the following parameters:
 
@@ -264,7 +292,7 @@ voicings. At present, only one extra voice above the number of voices
 in the pitch set is implemented. Mostly to support SATB for three-
 pitch chords, in which case the root pitch will be doubled:
 
-  $mcp->chord_pos([0,4,7], -voices => 4);
+  chord_pos([0,4,7], -voices => 4);
 
 =back
 
@@ -273,14 +301,20 @@ certain musical styles; for example, in SATB chorales, the bass alone is
 allowed to drift far from the other voices, but not both the bass and
 tenor from the upper voices.
 
+=item B<chords2voices>( I<pitch set list> )
+
+Accepts a pitch set list (such as returned by B<chord_pos>), transposes
+vertical chords into horizontal voices. Returns list of voices, highest
+to lowest.
+
 =back
 
 =head1 SEE ALSO
 
 L<Music::Chord::Note>
 
-B<Theory of Harmony> by Arnold Schoenberg (whose chord voicing exercise
-prompted this exercise in coding).
+B<Theory of Harmony> by Arnold Schoenberg. Whose simple chord voicing
+exercise prompted this not as simple diversion in coding.
 
 =head1 AUTHOR
 
