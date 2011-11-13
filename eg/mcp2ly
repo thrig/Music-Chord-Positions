@@ -3,7 +3,8 @@
 # Accepts various inputs, applies Music::Chord::Positions functions to
 # that input, outputs lilypond data containing the results. Example:
 #
-# mcp2ly -o inv 0 4 7 > foo.ly && lilypond foo.ly
+# mcp2ly -o inv 0 4 7 > inv.ly && lilypond inv.ly
+# mcp2ly -f 0.1 -x -v 4 -o inv 0 4 7 > voc.ly && lilypond voc.ly
 
 use strict;
 use warnings;
@@ -17,10 +18,12 @@ use POSIX qw/floor/;
 my (
   %modes,               %pitch2note,      %registers,
   $LY_DEFAULT_DURATION, $chord_spec,      $cn,
-  $ly_lower_voices,     $ly_upper_voices, $mode,
-  $omit_orig,           $pitch_set
+  $fudge,               $ly_lower_voices, $ly_upper_voices,
+  $mode,                $omit_orig,       $pitch_set,
+  $voice_count,
 );
 
+$fudge               = 0.5;  # used to figure out what staff a voice end up in
 $LY_DEFAULT_DURATION = 1;    # whole note
 
 %pitch2note =
@@ -28,12 +31,20 @@ $LY_DEFAULT_DURATION = 1;    # whole note
 %registers =
   ( 0 => "", 1 => "'", 2 => "''", 3 => "'''", 4 => "''''", 5 => "'''''" );
 
-%modes =
-  ( inv => sub { chord_inv( $_[0] ) }, voc => sub { chord_pos( $_[0] ) } );
-GetOptions( 'operation|op|o=s' => \$mode, 'exclude-orig|x' => \$omit_orig );
+%modes = (
+  inv => sub { chord_inv( $_[0] ) },
+  voc => sub { chord_pos( $_[0], -voices => $_[1] ) }
+);
+
+GetOptions(
+  'exclude-orig|x'   => \$omit_orig,
+  'fudge|f=s'        => \$fudge,
+  'operation|op|o=s' => \$mode,
+  'voice-count|v=s'  => \$voice_count,
+);
 
 if ( !defined $mode or !exists $modes{$mode} or !@ARGV ) {
-  die "Usage: $0 [-x] -o [inv|voc] pitch set spec\n";
+  die "Usage: $0 [-v voicecount] [-x] -o [inv|voc] pitch set spec\n";
 }
 
 $chord_spec = "@ARGV";
@@ -54,7 +65,8 @@ if ( $chord_spec =~ m/[A-Za-z()-]/ or $chord_spec =~ m/^\s*\d+\s*$/ ) {
 {
   my ( @chords, @voices, @uv, @lv );
 
-  @chords = $modes{$mode}->($pitch_set);
+  @chords =
+    $modes{$mode}->( $pitch_set, ( $voice_count || scalar @$pitch_set ) );
   unshift @chords, $pitch_set unless $omit_orig;
   @voices = chords2voices(@chords);
 
@@ -67,7 +79,7 @@ if ( $chord_spec =~ m/[A-Za-z()-]/ or $chord_spec =~ m/^\s*\d+\s*$/ ) {
 
       $pitch = $ly_pitch . $registers{$reg_num};
     }
-    my $mean_register = floor( sum(@registers) / @$voice + 0.5 );
+    my $mean_register = floor( sum(@registers) / @$voice + $fudge );
 
     $voice->[0] .= $LY_DEFAULT_DURATION;
     if ( $mean_register > 0 ) {
