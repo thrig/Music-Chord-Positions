@@ -228,8 +228,8 @@ from a named chord.
   use Music::Chord::Note;
 
   # These both result in the same output from chord_inv()
-  my @i1 = chord_inv([ 0,3,7                                    ]);
-  my @i2 = chord_inv([ Music::Chord::Note->new->chord_num('Cm') ]);
+  my @i1 = chord_inv([ 0,3,7                                   ]);
+  my @i2 = chord_inv([ Music::Chord::Note->new->chord_num('m') ]);
 
 Using the resulting pitch sets and so forth left as exercise to user;
 converting the semitones to L<MIDI::Simple> or voices to lilypond
