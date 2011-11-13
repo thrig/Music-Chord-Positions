@@ -5,7 +5,7 @@ use warnings;
 
 use Carp qw(croak);
 use List::MoreUtils qw(uniq);
-use List::Util qw(max min sum);
+use List::Util qw(max min);
 
 our $VERSION = '0.01';
 
@@ -63,9 +63,11 @@ sub chord_pos {
   croak "pitch set reference required"
     unless defined $pitch_set and ref $pitch_set eq 'ARRAY';
 
-  # TODO cleanup/reorder
-  my ( @ps, $min_pitch_norm, $unique_pitch_count, @potentials, @revoicings,
-    $next_register );
+  my (
+    @ps,             @potentials,    @revoicings,
+    @voice_iters,    @voice_max,     %seen_intervals,
+    $min_pitch_norm, $next_register, $unique_pitch_count,
+  );
 
   $params{'-iinterval-max'} ||= 19;
 
@@ -106,18 +108,36 @@ sub chord_pos {
   }
   @potentials = uniq sort { $a <=> $b } @potentials;
 
-  my ( @voice_iters, @voice_max );
   for my $i ( 0 .. $params{'-voices'} - 1 ) {
     $voice_iters[$i] = $i;
     $voice_max[$i]   = $#potentials - $params{'-voices'} + $i + 1;
   }
 
   while ( $voice_iters[0] <= $voice_max[0] ) {
-    while ( $voice_iters[-1] <= $voice_max[-1] ) {
+  TOPV: while ( $voice_iters[-1] <= $voice_max[-1] ) {
       my @chord = @potentials[@voice_iters];
+      $voice_iters[-1]++;
+
+      my %harmeq;
+      for my $p (@chord) {
+        $harmeq{ $p % $DEG_IN_SCALE }++;
+      }
+      # Not enough unique pitches
+      next if keys %harmeq < $unique_pitch_count;
+      # Disallow doubled notes (excepting root)
+      for my $k ( grep { $_ != $min_pitch_norm } keys %harmeq ) {
+        next TOPV if $harmeq{$k} > 1;
+      }
+
+      # Nix any identical chord voicings (c e g == c' e' g')
+      my @intervals;
+      for my $j ( 1 .. $#chord ) {
+        push @intervals, $chord[$j] - $chord[ $j - 1 ];
+        next TOPV if $intervals[-1] > $params{'-iinterval-max'};
+      }
+      next TOPV if $seen_intervals{"@intervals"}++;
 
       push @revoicings, \@chord;
-      $voice_iters[-1]++;
     }
 
     # Increment any lower voices if top voice(s) maxxed out
