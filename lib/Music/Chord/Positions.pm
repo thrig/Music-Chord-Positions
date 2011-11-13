@@ -225,7 +225,8 @@ from a named chord.
 
 Using the resulting pitch sets and so forth left as exercise to user;
 converting the semitones to L<MIDI::Simple> or voices to lilypond
-compatible output should not be too difficult.
+compatible output should not be too difficult (see the C<eg> directory
+of this module's distribution for sample scripts).
 
 =head1 SUBROUTINES
 
@@ -308,6 +309,11 @@ tenor from the upper voices.
 Accepts a pitch set list (such as returned by B<chord_pos>), transposes
 vertical chords into horizontal voices. Returns list of voices, highest
 to lowest.
+
+=item B<scale_deg>( )
+
+Returns number of degrees in the scale. Should always be 12, unless
+someone sneaks in support for alternate scale systems in behind my back.
 
 =back
 
