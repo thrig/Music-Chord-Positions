@@ -17,6 +17,10 @@ our ( @ISA, @EXPORT_OK, %EXPORT_TAGS );
 
 my $DEG_IN_SCALE = 12;
 
+########################################################################
+#
+# SUBROUTINES
+
 sub chord_inv {
   my ($pitch_set) = @_;
   croak "pitch set reference required"
@@ -202,7 +206,9 @@ Music::Chord::Positions - generate various chord inversions and voicings
   my @inverses = chord_inv([0,4,7]);
   my @voicings = chord_pos([0,4,7]);
 
-Interface may be subject to change!
+  my @voices = chords2voices(@inverses);
+
+Interface may be subject to change without notice!
 
 =head1 DESCRIPTION
 
@@ -222,8 +228,12 @@ from a named chord.
   use Music::Chord::Note;
 
   # These both result in the same output from chord_inv()
-  my @i1 = chord_inv([0,3,7]);
+  my @i1 = chord_inv([ 0,3,7                                    ]);
   my @i2 = chord_inv([ Music::Chord::Note->new->chord_num('Cm') ]);
+
+Using the resulting pitch sets and so forth left as exercise to user;
+converting the semitones to L<MIDI::Simple> or voices to lilypond
+compatible output should not be too difficult.
 
 =head1 SUBROUTINES
 
