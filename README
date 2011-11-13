@@ -10,9 +10,8 @@ local::lib, etc.
 
 DEPENDENCIES
 
-This module requires these other modules and libraries:
-
-  Music::Chord::Note
+This module requires various Perl modules, as detailed in Makefile.PL.
+Music::Chord::Note is optional but recommended.
 
 COPYRIGHT AND LICENCE
 
