@@ -1,0 +1,77 @@
+#!/usr/bin/perl
+#
+# Accepts various inputs, applies Music::Chord::Positions functions to
+# that input, outputs lilypond data containing the results.
+
+use strict;
+use warnings;
+
+use Getopt::Long qw/GetOptions/;
+use Music::Chord::Note ();
+use Music::Chord::Positions qw/:all/;
+
+my (
+  @voices, %modes,           $chord_spec,
+  $cn,     $ly_lower_voices, $ly_upper_voices,
+  $mode,   $omit_orig,       $pitch_set
+);
+
+%modes =
+  ( inv => sub { chord_inv( $_[0] ) }, voc => sub { chord_pos( $_[0] ) } );
+GetOptions( 'operation|op|o=s' => \$mode, 'exclude-orig|x' => \$omit_orig );
+
+if ( !defined $mode or !exists $modes{$mode} or !@ARGV ) {
+  die "Usage: $0 [-x] -o [inv|voc] pitch set spec\n";
+}
+
+$chord_spec = "@ARGV";
+
+if ( $chord_spec =~ m/[A-Za-z()-]/ or $chord_spec =~ m/^\s*\d+\s*$/ ) {
+  eval { $pitch_set = [ Music::Chord::Note->new->chord_num($chord_spec) ] };
+  die
+    "Music::Chord::Note could not parse '$chord_spec', see list in module src\n"
+    if $@;
+} else {
+  my @pitches = $chord_spec =~ m/(\d+)/g;
+  $pitch_set = \@pitches;
+}
+
+{
+  my @chords = $modes{$mode}->($pitch_set);
+  unshift @chords, $pitch_set unless $omit_orig;
+  @voices = chords2voices(@chords);
+}
+
+# TODO figure out average register for where to place voice (lower
+# or upper staff), divide out voices, sring render, ref those
+# scalars in template, print. Oh, and set "whole note" for first
+# notes of the voices.
+
+print <<"END_TMPL";
+\\version "2.12.0"
+
+\\header {
+  title = "Pitch set: @$pitch_set (as $mode)"
+}
+
+upper = {
+  \\clef treble
+
+  $ly_upper_voices
+}
+
+lower = {
+  \\clef bass
+
+  $ly_lower_voices
+}
+
+\\score {
+  \\new PianoStaff <<
+    \\new Staff = "upper" \\upper
+    \\new Staff = "lower" \\lower
+  >>
+  \\layout { }
+  \\midi { }
+}
+END_TMPL
