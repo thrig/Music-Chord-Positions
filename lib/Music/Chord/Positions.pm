@@ -11,9 +11,10 @@ use List::Util qw(max min);
 our $VERSION = '0.01';
 
 our ( @ISA, @EXPORT_OK, %EXPORT_TAGS );
-@ISA         = qw(Exporter);
-@EXPORT_OK   = qw(&chord_inv &chord_pos &chords2voices);
-%EXPORT_TAGS = ( all => [qw(chord_inv chord_pos chords2voices)] );
+@ISA       = qw(Exporter);
+@EXPORT_OK = qw(&chord_inv &chord_pos &chords2voices &scale_deg);
+%EXPORT_TAGS =
+  ( all => [qw(chord_inv chord_pos chords2voices scale_deg)] );
 
 my $DEG_IN_SCALE = 12;
 
@@ -165,17 +166,6 @@ sub chord_pos {
   return @revoicings;
 }
 
-# TODO allow this or equiv to be passed in? or accept a callback to
-# render the note, given pitch and register data?
-my %conversions = (
-  'lilypond' => {
-    'notes' =>
-      {qw( 0 c 1 cis 2 d 3 cis 4 e 5 f 6 fis 7 g 8 gis 9 a 10 ais 11 b )},
-    'registers' => { 0 => "", 1 => "'", 2 => "''", 3 => "'''", 4 => "''''" },
-    'whoops'    => 'r',
-  },
-);
-
 # Change a pitch set collection (vertical) into voices (horizontal)
 sub chords2voices {
   my (@pitch_sets) = @_;
@@ -191,6 +181,8 @@ sub chords2voices {
 
   return reverse @voices;
 }
+
+sub scale_deg { $DEG_IN_SCALE }
 
 1;
 __END__
