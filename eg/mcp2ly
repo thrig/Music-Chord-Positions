@@ -9,7 +9,7 @@
 use strict;
 use warnings;
 
-use List::Util qw/sum/;
+use List::Util qw/shuffle sum/;
 use Getopt::Long qw/GetOptions/;
 use Music::Chord::Note ();
 use Music::Chord::Positions qw/:all/;
@@ -20,7 +20,7 @@ my (
   $LY_DEFAULT_DURATION, $chord_spec,      $cn,
   $fudge,               $ly_lower_voices, $ly_upper_voices,
   $mode,                $omit_orig,       $pitch_set,
-  $voice_count,
+  $shuffle,             $voice_count,
 );
 
 $fudge               = 0.5;  # used to figure out what staff a voice end up in
@@ -40,6 +40,7 @@ GetOptions(
   'exclude-orig|x'   => \$omit_orig,
   'fudge|f=s'        => \$fudge,
   'operation|op|o=s' => \$mode,
+  'shuffle|R'        => \$shuffle,
   'voice-count|v=s'  => \$voice_count,
 );
 
@@ -68,6 +69,7 @@ if ( $chord_spec =~ m/[A-Za-z()-]/ or $chord_spec =~ m/^\s*\d+\s*$/ ) {
   @chords =
     $modes{$mode}->( $pitch_set, ( $voice_count || scalar @$pitch_set ) );
   unshift @chords, $pitch_set unless $omit_orig;
+  @chords = shuffle @chords if $shuffle;
   @voices = chords2voices(@chords);
 
   for my $voice (@voices) {
