@@ -11,10 +11,10 @@ use List::Util qw(max min);
 our $VERSION = '0.02';
 
 our ( @ISA, @EXPORT_OK, %EXPORT_TAGS );
-@ISA       = qw(Exporter);
+@ISA = qw(Exporter);
+
 @EXPORT_OK = qw(&chord_inv &chord_pos &chords2voices &scale_deg);
-%EXPORT_TAGS =
-  ( all => [qw(chord_inv chord_pos chords2voices scale_deg)] );
+%EXPORT_TAGS = ( all => [qw(chord_inv chord_pos chords2voices scale_deg)] );
 
 my $DEG_IN_SCALE = 12;
 
@@ -152,6 +152,7 @@ sub chord_pos {
       while (
         $potentials[ $voice_iters[0] ] % $DEG_IN_SCALE != $min_pitch_norm ) {
         $voice_iters[0]++;
+        last if $voice_iters[0] > $voice_max[0];
       }
     }
 
