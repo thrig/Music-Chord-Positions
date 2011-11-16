@@ -4,11 +4,15 @@
 # that input, outputs lilypond data containing the results. Example:
 #
 # mcp2ly -o inv 0 4 7 > inv.ly && lilypond inv.ly
-# mcp2ly -f 0.1 -x -v 4 -o inv 0 4 7 > voc.ly && lilypond voc.ly
+# mcp2ly -f 0.1 -x -v 4 -o voc 0 4 7 > voc.ly && lilypond voc.ly
+#
+# Warning! Some pitch sets and looser restriction rules will result in
+# massive numbers of voicings.
 
 use strict;
 use warnings;
 
+use File::Basename qw/basename/;
 use List::Util qw/shuffle sum/;
 use Getopt::Long qw/GetOptions/;
 use Music::Chord::Note ();
@@ -16,15 +20,18 @@ use Music::Chord::Positions qw/:all/;
 use POSIX qw/floor/;
 
 my (
-  %modes,               %pitch2note,      %registers,
-  $LY_DEFAULT_DURATION, $chord_spec,      $cn,
-  $fudge,               $ly_lower_voices, $ly_upper_voices,
-  $mode,                $omit_orig,       $pitch_set,
-  $shuffle,             $voice_count,
+  @orig_args,       %modes,               %pitch2note,
+  %registers,       $LY_DEFAULT_DURATION, $chord_spec,
+  $cn,              $duration,            $fudge,
+  $ly_lower_voices, $ly_upper_voices,     $mode,
+  $omit_orig,       $pitch_set,           $shuffle,
+  $voice_count,
 );
 
-$fudge               = 0.5;  # used to figure out what staff a voice end up in
-$LY_DEFAULT_DURATION = 1;    # whole note
+@orig_args = ( map { $_ =~ tr/"/'/; $_ } basename($0), @ARGV );
+
+$duration = 1;      # whole note
+$fudge    = 0.5;    # used to help figure out what staff a voice ends up in
 
 %pitch2note =
   qw( 0 c 1 cis 2 d 3 dis 4 e 5 f 6 fis 7 g 8 gis 9 a 10 ais 11 b );
@@ -34,21 +41,22 @@ $LY_DEFAULT_DURATION = 1;    # whole note
 %modes = (
   inv => sub { chord_inv( $_[0] ) },
   voc => sub {
-# TODO rename - options, don't like them in practice, add means to specify
-# on CLI
+    # TODO rename - options, don't like them in practice, add means to specify
+    # on CLI
     chord_pos(
       $_[0],
       -voices => $_[1],
-#      '-all-doublings' => 1,
-#      '-any-root' => 1,
-#      '-disable-upc' => 1,
+      #      '-all-doublings' => 1,
+      #      '-any-root' => 1,
+      '-disable-upc'   => 1,
       '−iinterval−max' => 19,
-#      '-static-root' => 1,
+      #      '-static-root' => 1,
     );
   }
 );
 
 GetOptions(
+  'duration|D=s'     => \$duration,
   'exclude-orig|x'   => \$omit_orig,
   'fudge|f=s'        => \$fudge,
   'operation|op|o=s' => \$mode,
@@ -95,7 +103,7 @@ if ( $chord_spec =~ m/[A-Za-z()-]/ or $chord_spec =~ m/^\s*\d+\s*$/ ) {
     }
     my $mean_register = floor( sum(@registers) / @$voice + $fudge );
 
-    $voice->[0] .= $LY_DEFAULT_DURATION;
+    $voice->[0] .= $duration;
     if ( $mean_register > 0 ) {
       push @uv, join " ", @$voice;
     } else {
@@ -115,7 +123,8 @@ print <<"END_TMPL";
 \\version "2.12.0"
 
 \\header {
-  title = "Pitch set: @$pitch_set (as $mode)"
+  title    = "Pitch set: @$pitch_set (as $mode)"
+  subtitle = "@orig_args"
 }
 
 upper = {
