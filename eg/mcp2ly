@@ -41,17 +41,8 @@ $fudge    = 0.5;    # used to help figure out what staff a voice ends up in
 %modes = (
   inv => sub { chord_inv( $_[0] ) },
   voc => sub {
-    # TODO rename - options, don't like them in practice, add means to specify
-    # on CLI
-    chord_pos(
-      $_[0],
-      -voices => $_[1],
-      #      '-all-doublings' => 1,
-      #      '-any-root' => 1,
-      '-disable-upc'   => 1,
-      '−iinterval−max' => 19,
-      #      '-static-root' => 1,
-    );
+    # TODO add means to specify other params on CLI
+    chord_pos( $_[0], voice_count => $_[1], );
   }
 );
 
@@ -123,8 +114,9 @@ print <<"END_TMPL";
 \\version "2.12.0"
 
 \\header {
-  title    = "Pitch set: @$pitch_set (as $mode)"
+  title    = "Pitch set: @$pitch_set"
   subtitle = "@orig_args"
+  subsubtitle = "Music::Chord::Positions v.$Music::Chord::Positions::VERSION"
 }
 
 upper = {
