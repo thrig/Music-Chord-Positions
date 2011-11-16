@@ -292,6 +292,10 @@ How far above the register of the chord to generate voicings in. If set
 to a large value, the B<-iinterval-max> value should likely also be
 increased.
 
+=item B<-static-root> I<1>
+
+Prevent the root pitch from changing in the generated positions.
+
 =item B<-voices> I<depends on pitch set passed>
 
 Use this to customize the number of voices in the different chord
