@@ -33,7 +33,19 @@ $LY_DEFAULT_DURATION = 1;    # whole note
 
 %modes = (
   inv => sub { chord_inv( $_[0] ) },
-  voc => sub { chord_pos( $_[0], -voices => $_[1] ) }
+  voc => sub {
+# TODO rename - options, don't like them in practice, add means to specify
+# on CLI
+    chord_pos(
+      $_[0],
+      -voices => $_[1],
+#      '-all-doublings' => 1,
+#      '-any-root' => 1,
+#      '-disable-upc' => 1,
+      '−iinterval−max' => 19,
+#      '-static-root' => 1,
+    );
+  }
 );
 
 GetOptions(
