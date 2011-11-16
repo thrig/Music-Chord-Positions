@@ -8,7 +8,7 @@ use Exporter ();
 use List::MoreUtils qw(uniq);
 use List::Util qw(max min);
 
-our $VERSION = '0.02';
+our $VERSION = '0.03';
 
 our ( @ISA, @EXPORT_OK, %EXPORT_TAGS );
 @ISA = qw(Exporter);
@@ -107,6 +107,9 @@ sub chord_pos {
   for my $i ( 0 .. $params{'-voices'} - 1 ) {
     $voice_iters[$i] = $i;
     $voice_max[$i]   = $#potentials - $params{'-voices'} + $i + 1;
+  }
+  if ( exists $params{'-static-root'} and $params{'-static-root'} ) {
+    $voice_max[0] = $voice_iters[0];
   }
 
   while ( $voice_iters[0] <= $voice_max[0] ) {
