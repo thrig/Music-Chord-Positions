@@ -243,7 +243,7 @@ stuff. If OO desired, code something up?
 
 =over 4
 
-=item B<chord_inv>( I<pitch set reference> )
+=item B<chord_inv>( I<pitch set reference>, I<list of optional paramters> ... )
 
 Generates inversions of the pitch set, returns a list of pitch sets
 (list of array references). The order of the results will be 1st
@@ -252,6 +252,17 @@ inversion, 2nd inversion, etc.
 No transposition is performed, so inversions of 9ths or larger may
 result in a chord in a register above the original. If this is a
 problem, decrement the semitones in the pitch set by 12 or whatever.
+
+Parameter accepted (just one):
+
+=over 4
+
+=item B<pitch_norm> => I<0>
+
+If set and true, transposes inversions down if lowest pitch of said
+inversion is greater than the degrees in the scale.
+
+=back
 
 =item B<chord_pos>( I<pitch set reference>, I<list of optional parameters> ... )
 
@@ -272,38 +283,38 @@ in many, many, many different voicings for larger pitch sets.
 
 =over 4
 
-=item B<interval_adj_max> I<19>
+=item B<interval_adj_max> => I<19>
 
 Largest interval allowed between two adjacent voices, in semitones.
 
-=item B<no_limit_doublings> I<0>
+=item B<no_limit_doublings> => I<0>
 
 If set and true, allows doublings on all pitches, not just the default
 of the root pitch.
 
-=item B<no_limit_uniq> I<0>
+=item B<no_limit_uniq> => I<0>
 
 If set and true, disables the unique pitch check. That is, voicings will
 be allowed with fewer pitches than in the original pitch set.
 
-=item B<octave_count> I<2>
+=item B<octave_count> => I<2>
 
 How far above the register of the chord to generate voicings in. If set
 to a large value, the B<interval_adj_max> value may also need to be
 increased.
 
-=item B<root_any> I<0>
+=item B<root_any> => I<0>
 
 If set and true, allows the root pitch of the voicing to be any member
 of the original pitch set, not just the lowest of that set. Pointless if
 B<root_lock> set.
 
-=item B<root_lock> I<0>
+=item B<root_lock> => I<0>
 
 Prevent the root pitch from changing in the generated positions. Defeats
 B<root_any> option.
 
-=item B<voice_count> I<depends on pitch set passed>
+=item B<voice_count> => I<depends on pitch set passed>
 
 Use this to customize the number of voices in the different chord
 voicings. At present, only one extra voice above the number of voices
