@@ -1,10 +1,10 @@
 use strict;
 use warnings;
 
-use Test::More tests => 5;
+use Test::More tests => 7;
 
 BEGIN { use_ok('Music::Chord::Positions') }
-can_ok( 'Music::Chord::Positions', qw/chord_inv chord_pos chords2voices/ );
+can_ok( 'Music::Chord::Positions', qw/chord_inv chord_pos chords2voices scale_deg/ );
 
 ########################################################################
 #
@@ -71,3 +71,14 @@ is_deeply(
   [ [qw/3 3/], [qw/2 2/], [qw/1 1/] ],
   'simple chord to voice switch'
 );
+is_deeply(
+  [ Music::Chord::Positions::chords2voices( [qw/1 2 3/] ) ],
+  [ [qw/1 2 3/] ],
+  'nothing for chords2voices to do'
+);
+
+########################################################################
+#
+# scale_deg test
+
+is(Music::Chord::Positions::scale_deg(), 12, 'degress in scale');

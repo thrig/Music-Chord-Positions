@@ -175,6 +175,9 @@ sub chords2voices {
   my (@pitch_sets) = @_;
   croak "not a list of pitch sets" unless ref $pitch_sets[0] eq 'ARRAY';
 
+  # Nothing to swap, change nothing
+  return @pitch_sets if @pitch_sets < 2;
+
   my @voices;
 
   for my $vi ( 0 .. $#{ $pitch_sets[0] } ) {
