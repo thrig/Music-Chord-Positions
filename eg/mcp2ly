@@ -3,8 +3,8 @@
 # Accepts various inputs, applies Music::Chord::Positions functions to
 # that input, outputs lilypond data containing the results. Example:
 #
-# mcp2ly -o inv 0 4 7 > inv.ly && lilypond inv.ly
-# mcp2ly -f 0.1 -x -v 4 -o voc 0 4 7 > voc.ly && lilypond voc.ly
+# mcp2ly inv 0 4 7 > inv.ly && lilypond inv.ly
+# mcp2ly -f 0.1 -x -v 4 voc 0 4 7 > voc.ly && lilypond voc.ly
 #
 # Warning! Some pitch sets and looser restriction rules will result in
 # massive numbers of voicings.
@@ -20,12 +20,12 @@ use Music::Chord::Positions qw/:all/;
 use POSIX qw/floor/;
 
 my (
-  @orig_args,       %modes,               %pitch2note,
-  %registers,       $LY_DEFAULT_DURATION, $chord_spec,
-  $cn,              $duration,            $fudge,
-  $ly_lower_voices, $ly_upper_voices,     $mode,
-  $omit_orig,       $pitch_set,           $shuffle,
-  $voice_count,
+  @orig_args,  %modes,           %params,
+  %pitch2note, %registers,       $LY_DEFAULT_DURATION,
+  $chord_spec, $cn,              $duration,
+  $fudge,      $ly_lower_voices, $ly_upper_voices,
+  $mode,       $omit_orig,       $pitch_set,
+  $shuffle,    $voice_count,
 );
 
 @orig_args = ( map { $_ =~ tr/"/'/; $_ } basename($0), @ARGV );
@@ -39,21 +39,20 @@ $fudge    = 0.5;    # used to help figure out what staff a voice ends up in
   ( 0 => "", 1 => "'", 2 => "''", 3 => "'''", 4 => "''''", 5 => "'''''" );
 
 %modes = (
-  inv => sub { chord_inv( $_[0] ) },
-  voc => sub {
-    # TODO add means to specify other params on CLI
-    chord_pos( $_[0], voice_count => $_[1], );
-  }
+  inv => \&chord_inv,
+  voc => \&chord_pos,
 );
 
 GetOptions(
-  'duration|D=s'     => \$duration,
-  'exclude-orig|x'   => \$omit_orig,
-  'fudge|f=s'        => \$fudge,
-  'operation|op|o=s' => \$mode,
-  'shuffle|R'        => \$shuffle,
-  'voice-count|v=s'  => \$voice_count,
+  'duration|D=s'    => \$duration,
+  'exclude-orig|x'  => \$omit_orig,
+  'fudge|f=s'       => \$fudge,
+  'param|p=s'       => \%params,
+  'shuffle|R'       => \$shuffle,
+  'voice-count|v=s' => \$voice_count,
 );
+
+$mode = shift;
 
 if ( !defined $mode or !exists $modes{$mode} or !@ARGV ) {
   die "Usage: $0 [-v voicecount] [-x] -o [inv|voc] pitch set spec\n";
@@ -77,8 +76,15 @@ if ( $chord_spec =~ m/[A-Za-z()-]/ or $chord_spec =~ m/^\s*\d+\s*$/ ) {
 {
   my ( @chords, @voices, @uv, @lv );
 
-  @chords =
-    $modes{$mode}->( $pitch_set, ( $voice_count || scalar @$pitch_set ) );
+  if ( $voice_count and exists $params{'voice_count'} ) {
+    die "error: voice_count specified twice??\n";
+  } elsif ( $voice_count and $mode eq 'voc' ) {
+    $params{voice_count} = $voice_count;
+  }
+
+  @chords = $modes{$mode}->( $pitch_set, %params );
+  die "no chords generated" unless @chords;
+
   unshift @chords, $pitch_set unless $omit_orig;
   @chords = shuffle @chords if $shuffle;
   @voices = chords2voices(@chords);
