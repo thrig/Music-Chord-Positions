@@ -1,3 +1,7 @@
+Module to generate chord inversions and different chord voicings.
+See the module perldocs for more information on usage, or eg/mcp2ly
+for a CLI tool.
+
 To install this module type the following:
 
    perl Makefile.PL
