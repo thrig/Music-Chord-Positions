@@ -8,7 +8,7 @@ use Exporter ();
 use List::MoreUtils qw(uniq);
 use List::Util qw(max min);
 
-our $VERSION = '0.03';
+our $VERSION = '0.04';
 
 our ( @ISA, @EXPORT_OK, %EXPORT_TAGS );
 @ISA = qw(Exporter);
@@ -322,7 +322,7 @@ tenor from the upper voices.
 
 Accepts a pitch set list (such as returned by B<chord_pos>), transposes
 vertical chords into horizontal voices. Returns list of voices, highest
-to lowest.
+to lowest. Returns the original pitch set list if nothing to transpose.
 
 =item B<scale_deg>( )
 
