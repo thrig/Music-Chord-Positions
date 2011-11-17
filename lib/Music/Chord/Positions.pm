@@ -23,7 +23,7 @@ my $DEG_IN_SCALE = 12;
 # SUBROUTINES
 
 sub chord_inv {
-  my ($pitch_set) = @_;
+  my ( $pitch_set, %params ) = @_;
   croak "pitch set reference required"
     unless defined $pitch_set and ref $pitch_set eq 'ARRAY';
 
@@ -42,13 +42,13 @@ sub chord_inv {
       ];
 
     # Normalize to "0th" register if lowest pitch is an octave+ out
-    # TODO this is a output/display issue, move to formatting routines if
-    # write those.
-    #   my $min_pitch = min( @{ $inversions[-1] } );
-    #   if ( $min_pitch >= $DEG_IN_SCALE ) {
-    #     my $offset = $min_pitch - $min_pitch % $DEG_IN_SCALE;
-    #     $_ -= $offset for @{ $inversions[-1] };
-    #   }
+    if ( exists $params{'pitch_norm'} and $params{'pitch_norm'} ) {
+      my $min_pitch = min( @{ $inversions[-1] } );
+      if ( $min_pitch >= $DEG_IN_SCALE ) {
+        my $offset = $min_pitch - $min_pitch % $DEG_IN_SCALE;
+        $_ -= $offset for @{ $inversions[-1] };
+      }
+    }
   }
 
   return @inversions;
@@ -122,7 +122,8 @@ sub chord_pos {
         $harmeq{ $p % $DEG_IN_SCALE }++;
       }
 
-      unless ( exists $params{'no_limit_uniq'} and $params{'no_limit_uniq'} ) {
+      unless ( exists $params{'no_limit_uniq'} and $params{'no_limit_uniq'} )
+      {
         next if keys %harmeq < $unique_pitch_count;
       }
 

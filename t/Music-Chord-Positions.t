@@ -1,10 +1,11 @@
 use strict;
 use warnings;
 
-use Test::More tests => 7;
+use Test::More tests => 8;
 
 BEGIN { use_ok('Music::Chord::Positions') }
-can_ok( 'Music::Chord::Positions', qw/chord_inv chord_pos chords2voices scale_deg/ );
+can_ok( 'Music::Chord::Positions',
+  qw/chord_inv chord_pos chords2voices scale_deg/ );
 
 ########################################################################
 #
@@ -24,6 +25,19 @@ is_deeply(
   \@inversions,
   [ [ 4, 7, 11, 12 ], [ 7, 11, 12, 16 ], [ 11, 12, 16, 19 ] ],
   'check inversions of 7th'
+);
+
+# pitch_norm
+@inversions =
+  Music::Chord::Positions::chord_inv( [ 0, 4, 7, 10, 13 ], pitch_norm => 1 );
+is_deeply(
+  \@inversions,
+  [ [ 4,  7,  10, 13, 24 ],
+    [ 7,  10, 13, 24, 28 ],
+    [ 10, 13, 24, 28, 31 ],
+    [ 1,  12, 16, 19, 22 ],
+  ],
+  'inversion with pitch_norm'
 );
 
 # 9th - spans octave! (maybe also 15th, 17th to make sure 2x octaves
@@ -81,4 +95,4 @@ is_deeply(
 #
 # scale_deg test
 
-is(Music::Chord::Positions::scale_deg(), 12, 'degress in scale');
+is( Music::Chord::Positions::scale_deg(), 12, 'degress in scale' );
