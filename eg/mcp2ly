@@ -25,7 +25,7 @@ my (
   $chord_spec, $cn,              $duration,
   $fudge,      $ly_lower_voices, $ly_upper_voices,
   $mode,       $omit_orig,       $pitch_set,
-  $shuffle,    $voice_count,
+  $reverse,    $shuffle,         $voice_count,
 );
 
 @orig_args = ( map { $_ =~ tr/"/'/; $_ } basename($0), @ARGV );
@@ -57,7 +57,8 @@ GetOptions(
   'exclude-orig|x'  => \$omit_orig,
   'fudge|f=s'       => \$fudge,
   'param|p=s'       => \%params,
-  'shuffle|R'       => \$shuffle,
+  'reverse'         => \$reverse,
+  'shuffle'         => \$shuffle,
   'voice-count|v=s' => \$voice_count,
 );
 $mode = shift;
@@ -95,8 +96,12 @@ if ( $chord_spec =~ m/[A-Za-z()-]/ or $chord_spec =~ m/^\s*\d+\s*$/ ) {
   @chords = $modes{$mode}->( $pitch_set, %params );
   die "no chords generated" unless @chords;
 
+  warn "notice: reverse and shuffle together? really?\n"
+    if $shuffle and $reverse;
+
   unshift @chords, $pitch_set unless $omit_orig;
   @chords = shuffle @chords if $shuffle;
+  @chords = reverse @chords if $reverse;
   @voices = chords2voices(@chords);
 
   for my $voice (@voices) {
