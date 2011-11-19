@@ -3,6 +3,7 @@ use ExtUtils::MakeMaker;
 my %params = (
   NAME         => 'Music::Chord::Positions',
   VERSION_FROM => 'lib/Music/Chord/Positions.pm',
+  LICENSE      => 'perl',
   PREREQ_PM    => {
     Carp               => 0,
     List::MoreUtils    => 0,
