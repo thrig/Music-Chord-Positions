@@ -20,20 +20,21 @@ use Music::Chord::Positions qw/:all/;
 use POSIX qw/floor/;
 
 my (
-  @orig_args,       %modes,     %params,
-  %pitch2note,      %registers, $LY_DEFAULT_DURATION,
-  $chord_spec,      $cn,        $duration,
-  $flats,           $fudge,     $ly_lower_voices,
-  $ly_upper_voices, $mode,      $omit_orig,
-  $pitch_set,       $reverse,   $shuffle,
-  $transpose,       $voice_count,
+  @orig_args,       %modes,           %params,
+  %pitch2note,      %registers,       $LY_DEFAULT_DURATION,
+  $chord_spec,      $cn,              $duration,
+  $exit_status,     $flats,           $fudge,
+  $ly_lower_voices, $ly_upper_voices, $mode,
+  $omit_orig,       $pitch_set,       $reverse,
+  $shuffle,         $transpose,       $voice_count,
 );
 
 @orig_args = ( map { $_ =~ tr/"/'/; $_ } basename($0), @ARGV );
 
-$duration  = 1;      # whole note
-$fudge     = 0.5;    # used to help figure out what staff a voice ends up in
-$transpose = 0;
+$duration    = 1;      # whole note
+$exit_status = 0;
+$fudge       = 0.5;    # used to help figure out what staff a voice ends up in
+$transpose   = 0;
 
 %pitch2note =
   qw( 0 c 1 cis 2 d 3 dis 4 e 5 f 6 fis 7 g 8 gis 9 a 10 ais 11 b );
@@ -142,13 +143,16 @@ if ( $chord_spec =~ m/[A-Za-z()-]/ or $chord_spec =~ m/^\s*\d+\s*$/ ) {
   }
 }
 
-print <<"END_TMPL";
+$exit_status = print <<"END_TMPL";
 \\version "2.12.0"
+
+#(define-markup-list-command (paragraph layout props args) (markup-list?)
+ (interpret-markup-list layout props
+   (make-justified-lines-markup-list (cons (make-hspace-markup 2) args))))
 
 \\header {
   title    = "Pitch set: @$pitch_set"
-  subtitle = "@orig_args"
-  subsubtitle = "Music::Chord::Positions v.$Music::Chord::Positions::VERSION"
+  subtitle = "Music::Chord::Positions v.$Music::Chord::Positions::VERSION"
 }
 
 upper = {
@@ -163,6 +167,10 @@ lower = {
   $ly_lower_voices
 }
 
+\\markuplines { \\paragraph {
+@orig_args
+} }
+
 \\score {
   \\new PianoStaff <<
     \\new Staff = "upper" \\upper
@@ -172,6 +180,15 @@ lower = {
   \\midi { }
 }
 END_TMPL
+
+END {
+  unless ( close(STDOUT) ) {
+    warn "error: problem closing STDOUT: $!\n";
+    exit 74;
+  }
+}
+
+exit $exit_status;
 
 ########################################################################
 #
