@@ -20,13 +20,13 @@ use Music::Chord::Positions qw/:all/;
 use POSIX qw/floor/;
 
 my (
-  @orig_args,  %modes,           %params,
-  %pitch2note, %registers,       $LY_DEFAULT_DURATION,
-  $chord_spec, $cn,              $duration,
-  $fudge,      $ly_lower_voices, $ly_upper_voices,
-  $mode,       $omit_orig,       $pitch_set,
-  $reverse,    $shuffle,         $transpose,
-  $voice_count,
+  @orig_args,       %modes,     %params,
+  %pitch2note,      %registers, $LY_DEFAULT_DURATION,
+  $chord_spec,      $cn,        $duration,
+  $flats,           $fudge,     $ly_lower_voices,
+  $ly_upper_voices, $mode,      $omit_orig,
+  $pitch_set,       $reverse,   $shuffle,
+  $transpose,       $voice_count,
 );
 
 @orig_args = ( map { $_ =~ tr/"/'/; $_ } basename($0), @ARGV );
@@ -57,6 +57,7 @@ $transpose = 0;
 GetOptions(
   'duration|D=s'    => \$duration,
   'exclude-orig|x'  => \$omit_orig,
+  'flats'           => \$flats,
   'fudge|f=s'       => \$fudge,
   'param|p=s'       => \%params,
   'reverse|r'       => \$reverse,
@@ -69,6 +70,11 @@ $mode = shift;
 if ( !defined $mode or !exists $modes{$mode} or !@ARGV ) {
   print_help();
   exit 64;
+}
+
+if ($flats) {
+  %pitch2note =
+    qw( 0 c 1 des 2 d 3 ees 4 e 5 f 6 ges 7 g 8 aes 9 a 10 bes 11 b );
 }
 
 $chord_spec = "@ARGV";
@@ -181,6 +187,7 @@ Options:
 
   duration|D=s     Specify custom duration for chords generated (default whole)
   exclude-orig|x   Exclude original chord from output.
+  flats            Use flats instead of sharps in output.
   fudge|f=s        Fudge factor for what clef voices end up in.
   param|p=s        Custom parameters, see Music::Chord::Positions docs.
   reverse|r        Reverse order of the generated chords.
