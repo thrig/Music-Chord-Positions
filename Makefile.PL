@@ -25,7 +25,7 @@ my %params = (
 if ( $ExtUtils::MakeMaker::VERSION ge '6.46' ) {
   $parms{META_MERGE} = {
     resources => {
-      license    => 'http://dev.perl.org/licenses/artistic.html',
+      license    => 'http://dev.perl.org/licenses/',
       repository => 'http://github.com/thrig/Music-Chord-Positions',
       bugtracker =>
         'http://rt.cpan.org/NoAuth/Bugs.html?Dist=Music-Chord-Positions',

@@ -10,7 +10,9 @@ To install this module type the following:
    make install
 
 But really, why would you do that? Use cpan or cpanm, and
-local::lib, etc.
+local::lib, or snag the module from:
+
+http://github.com/thrig/Music-Chord-Positions
 
 DEPENDENCIES
 
