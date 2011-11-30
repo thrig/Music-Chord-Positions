@@ -128,12 +128,10 @@ sub chord_pos {
       for my $p (@chord) {
         $harmeq{ $p % $DEG_IN_SCALE }++;
       }
-
       unless ( exists $params{'no_limit_uniq'} and $params{'no_limit_uniq'} )
       {
         next if keys %harmeq < $unique_pitch_count;
       }
-
       unless ( exists $params{'no_limit_doublings'}
         and $params{'no_limit_doublings'} ) {
         for my $k ( grep { $_ != $min_pitch_norm } keys %harmeq ) {
