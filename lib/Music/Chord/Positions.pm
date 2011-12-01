@@ -209,7 +209,7 @@ Music::Chord::Positions - generate various chord inversions and voicings
   use Music::Chord::Positions qw/:all/;
 
   my @inverses = chord_inv([0,4,7]);
-  my @voicings = chord_pos([0,4,7]);
+  my @voicings = chord_pos([0,4,7], voice_count => 4);
 
   my @voices = chords2voices(@inverses);
 
