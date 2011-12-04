@@ -139,13 +139,16 @@ sub chord_pos {
         }
       }
 
-      # Nix any identical chord voicings (c e g == c' e' g')
       my @intervals;
       for my $j ( 1 .. $#chord ) {
         push @intervals, $chord[$j] - $chord[ $j - 1 ];
         next TOPV if $intervals[-1] > $params{'interval_adj_max'};
       }
-      next TOPV if $seen_intervals{"@intervals"}++;
+      # Nix any identical chord voicings (c e g == c' e' g')
+      unless ( exists $params{'allow_transpositions'}
+        and $params{'allow_transpositions'} ) {
+        next TOPV if $seen_intervals{"@intervals"}++;
+      }
 
       push @revoicings, \@chord;
     }
@@ -287,6 +290,11 @@ The B<chord_pos> method can be influenced by the following parameters
 in many, many, many different voicings for larger pitch sets.
 
 =over 4
+
+=item B<allow_transpositions> => I<0>
+
+If set and true, allows transpositions of identical pitch sets into
+higher registers. That is, permit both 0 4 7 and 12 16 19.
 
 =item B<interval_adj_max> => I<19>
 
