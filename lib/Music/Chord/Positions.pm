@@ -65,7 +65,11 @@ sub chord_pos {
     $min_pitch_norm, $next_register, $unique_pitch_count,
   );
 
-  $params{'interval_adj_max'} ||= 19;
+  $params{'interval_adj_max'} =
+    ( exists $params{'interval_adj_max'}
+      and defined $params{'interval_adj_max'} )
+    ? $params{'interval_adj_max'}
+    : 19;
 
   if ( exists $params{'octave_count'} ) {
     $params{'octave_count'} = 2 if $params{'octave_count'} < 2;
@@ -247,7 +251,7 @@ of this module's distribution for sample scripts).
 =head1 SUBROUTINES
 
 Nothing exported by default. Use the fully qualified path, or import
-stuff. If OO desired, code something up?
+specific functions, or use the C<:all> import tag.
 
 =over 4
 
@@ -368,8 +372,9 @@ someone sneaks in support for alternate scale systems in behind my back.
 
 L<Music::Chord::Note>
 
-B<Theory of Harmony> by Arnold Schoenberg. Whose simple chord voicing
-exercise prompted this not as simple diversion in coding.
+B<Theory of Harmony> by Arnold Schoenberg (ISBN 978-0-520-26608-7).
+Whose simple chord voicing exercise prompted this not as simple
+diversion in coding.
 
 =head1 AUTHOR
 
