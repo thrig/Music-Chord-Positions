@@ -24,9 +24,10 @@ my (
   %pitch2note,      %registers,       $LY_DEFAULT_DURATION,
   $chord_spec,      $cn,              $duration,
   $exit_status,     $flats,           $fudge,
-  $ly_lower_voices, $ly_upper_voices, $mode,
-  $omit_orig,       $pitch_set,       $reverse,
-  $shuffle,         $transpose,       $voice_count,
+  $is_conventional, $ly_lower_voices, $ly_upper_voices,
+  $mode,            $omit_orig,       $pitch_set,
+  $reverse,         $shuffle,         $transpose,
+  $voice_count,
 );
 
 @orig_args = ( map { $_ =~ tr/"/'/; $_ } basename($0), @ARGV );
@@ -56,6 +57,7 @@ $transpose   = 0;
 );
 
 GetOptions(
+  'conventional|c'  => \$is_conventional,
   'duration|D=s'    => \$duration,
   'exclude-orig|x'  => \$omit_orig,
   'flats'           => \$flats,
@@ -97,6 +99,14 @@ if ( $chord_spec =~ m/[A-Za-z()-]/ or $chord_spec =~ m/^\s*\d+\s*$/ ) {
 # the module.
 {
   my ( @chords, @voices, @uv, @lv );
+
+  if ($is_conventional) {
+    my @ep = grep { $_ ne 'voice_count' } keys %params;
+    delete @params{@ep};
+    $params{'allow_transpositions'} = 1;
+    $params{'no_partial_closed'}    = 1;
+    $params{'pitch_max'}            = -1;
+  }
 
   if ( $voice_count and exists $params{'voice_count'} ) {
     die "error: voice_count specified twice??\n";
@@ -202,6 +212,7 @@ Generates chord inversions or voicings in lilypond format to stdout.
 
 Options:
 
+  conventional     Set a bunch of parameters for "conventional" voicings.
   duration|D=s     Specify custom duration for chords generated (default whole)
   exclude-orig|x   Exclude original chord from output.
   flats            Use flats instead of sharps in output.

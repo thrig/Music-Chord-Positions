@@ -3,5 +3,6 @@ MANIFEST
 README
 eg/mcp2ly
 t/Music-Chord-Positions.t
+t/Schoenberg.t
 t/pod.t
 lib/Music/Chord/Positions.pm

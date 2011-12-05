@@ -5,7 +5,7 @@ use warnings;
 
 use Carp qw(croak);
 use Exporter ();
-use List::MoreUtils qw(uniq);
+use List::MoreUtils qw(all uniq);
 use List::Util qw(max min);
 
 our $VERSION = '0.05';
@@ -143,11 +143,40 @@ sub chord_pos {
         }
       }
 
-      my @intervals;
+      my ( @intervals, %intv_by_idx );
       for my $j ( 1 .. $#chord ) {
         push @intervals, $chord[$j] - $chord[ $j - 1 ];
         next TOPV if $intervals[-1] > $params{'interval_adj_max'};
+
+        $intv_by_idx{ $j - 1 } = $intervals[-1] if @chord > 2;
       }
+      # TODO these routines have not been tested against chords with 5+
+      # voices, so may allow pitch sets that violate the spirit of the
+      # following (3rds in the middle of otherwise open voicings would
+      # be what I would expect to see pass in 5+ voice chords).
+      if (  @chord > 2
+        and exists $params{'no_partial_closed'}
+        and $params{'no_partial_closed'} ) {
+        # Exclude 3rds near fundamental where next voice 5th+ out
+        if ( $intervals[0] < 5 and $intervals[1] > 6 ) {
+          next TOPV;
+        }
+        # Exclude 3rds at top where next lower voice 5th+ out
+        if ( $intervals[-1] < 5 and $intervals[-2] > 6 ) {
+          next TOPV;
+        }
+
+        # Exclude cases where highest voice has wandered off by a larger
+        # interval than seen below.
+        my @ordered_intv =
+          sort { $intv_by_idx{$b} <=> $intv_by_idx{$a} } keys %intv_by_idx;
+        if ( $ordered_intv[0] > $ordered_intv[-1]
+          and all { $intv_by_idx{ $ordered_intv[0] } > 1 + $intv_by_idx{$_} }
+          @ordered_intv[ 1 .. $#ordered_intv ] ) {
+          next TOPV;
+        }
+      }
+
       # Nix any identical chord voicings (c e g == c' e' g')
       unless ( exists $params{'allow_transpositions'}
         and $params{'allow_transpositions'} ) {
@@ -289,6 +318,17 @@ than 19 semitones (octave+fifth) between adjacent pitches will also be
 excluded, as will transpositions of the same voicing into higher
 registers.
 
+The default settings for C<chord_pos()> generate more voicings than may
+be permitted by music theory; a set more in line with conventional music
+theory would require the following options:
+
+  my @chords = chord_pos(
+    [qw/0 4 7/],
+    allow_transpositions =>  1, # as SATB can transpose up
+    no_partial_closed    =>  1, # exclude half open/closed positions
+    pitch_max            => -1, # avoids 36 (c''') in Soprano
+  );
+
 The B<chord_pos> method can be influenced by the following parameters
 (default values are shown). Beware that removing restrictions may result
 in many, many, many different voicings for larger pitch sets.
@@ -313,6 +353,12 @@ of the root pitch.
 
 If set and true, disables the unique pitch check. That is, voicings will
 be allowed with fewer pitches than in the original pitch set.
+
+=item B<no_partial_closed> => I<0>
+
+If set and true, disallows vocings somewhere between close position
+and open position. See C<t/Schoenberg.t> and the source for what is
+being done.
 
 =item B<octave_count> => I<2>
 
