@@ -29,14 +29,14 @@ my (
   $reverse,         $shuffle,         $transpose,
   $voice_count,
 );
+$exit_status = 0;
 
 @orig_args = ( map { $_ =~ tr/"/'/; $_ } basename($0), @ARGV );
 
-$duration    = 1;      # whole note
-$exit_status = 0;
-$fudge       = 0.5;    # used to help figure out what staff a voice ends up in
-$transpose   = 0;
+$duration = 1;      # whole note
+$fudge    = 0.5;    # used to help figure out what staff a voice ends up in
 $ly_lower_voices = $ly_upper_voices = '';
+$transpose       = 0;
 
 %pitch2note =
   qw( 0 c 1 cis 2 d 3 dis 4 e 5 f 6 fis 7 g 8 gis 9 a 10 ais 11 b );
