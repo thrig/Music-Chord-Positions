@@ -1,0 +1,180 @@
+#!/usr/bin/perl
+
+use strict;
+use warnings;
+
+use List::Util qw/sum/;
+use Music::Chord::Positions qw/:all/;
+use POSIX qw/floor/;
+
+my $ROOT_LEAP_MAX = 8;    # just root
+my $LEAP_MAX      = 5;    # other voices
+
+my (
+  %params,          %pitch2note,      %pitch_input, %registers,
+  %scaledegcombos,  $duration,        $exit_status, $fudge,
+  $ly_lower_voices, $ly_upper_voices, $transpose,
+);
+$exit_status = 0;
+
+# Major scale (Ionian)
+# TODO alter this - instead by interval order, and then a transpose, so can
+# do everything from 0, and then transpose the target chord up and down around
+# the root chord
+#
+#0 4 7 -> 4 3
+#2 5 9 -> 3 4
+#4 7 11 -> 3 4
+#5 9 12 -> 4 3
+#7 11 14 -> 4 3
+#9 12 16 -> 3 4
+%pitch_input = (
+  I   => [qw/0 4 7/],
+  II  => [qw/2 5 9/],
+  III => [qw/4 7 11/],
+  IV  => [qw/5 9 12/],
+  V   => [qw/7 11 14/],
+  VI  => [qw/9 12 16/],
+);
+
+# I III - needs 5 octaves for unique 472
+%params = (
+  allow_transpositions => 1,
+  octave_count         => 5,
+  no_partial_closed    => 1,
+  pitch_max            => -1,
+  voice_count          => 4,
+);
+%pitch2note =
+  qw( 0 c 1 cis 2 d 3 dis 4 e 5 f 6 fis 7 g 8 gis 9 a 10 ais 11 b );
+%registers = (
+  -3 => ",,,",
+  -2 => ",,",
+  -1 => ",",
+  0  => "",
+  1  => "'",
+  2  => "''",
+  3  => "'''",
+  4  => "''''",
+  5  => "'''''"
+);
+$duration        = 1;
+$fudge           = 0.1;
+$ly_lower_voices = $ly_upper_voices = '';
+$transpose       = 0;
+
+for my $key ( keys %pitch_input ) {
+  my @chords = chord_pos( $pitch_input{$key}, %params );
+  $scaledegcombos{$key} = \@chords;
+}
+
+# Get voice lines, convert to lilypond format, figure out what staff the
+# voices should be in. TODO messy, really should be templated or part of
+# the module.
+{
+  my ( @voices, @uv, @lv, %seen );
+
+  use Data::Dump qw/dump/; # DBG
+
+  # TODO combinations of all I -> III for example
+  for my $ps1 ( @{ $scaledegcombos{'I'} } ) {
+    for my $ps2 ( @{ $scaledegcombos{'VI'} } ) {
+      next if abs( $ps2->[0] - $ps1->[0] ) > $ROOT_LEAP_MAX;
+      for my $vi ( 1 .. $#$ps1 ) {
+        next if abs( $ps2->[$vi] - $ps1->[$vi] ) > $LEAP_MAX;
+
+        # normalize to base octave if above
+        if ($ps1->[0] > scale_deg() and $ps2->[0] > scale_deg()) {
+          for my $p (@$ps1) {
+            $p %= scale_deg();
+          }
+          for my $p (@$ps2) {
+            $p %= scale_deg();
+          }
+        }
+
+        my @intervals;
+        for my $p (1..$#$ps1) {
+          push @intervals, $ps1->[$p] - $ps1->[$p-1];
+        }
+        for my $p (1..$#$ps2) {
+          push @intervals, $ps2->[$p] - $ps2->[$p-1];
+        }
+        next if $seen{"@intervals"}++;
+
+        push @voices, [@$ps1], [@$ps2];
+      }
+    }
+  }
+#warn dump(@voices),"\n";
+#warn dump(\%seen),"\n";
+  warn "allowed: ", scalar @voices;
+  warn "nixed d: ", sum values %seen;
+
+  @voices = chords2voices(@voices);
+
+  for my $voice (@voices) {
+    my ( @registers, $mean_reg_num );
+    for my $pitch (@$voice) {
+      $pitch += $transpose if $transpose;
+      my $ly_pitch = $pitch2note{ $pitch % scale_deg() };
+      my $reg_num  = int( $pitch / scale_deg() );
+      push @registers, $reg_num;
+
+      $pitch = $ly_pitch . $registers{$reg_num};
+    }
+    my $mean_register = floor( sum(@registers) / @$voice + $fudge );
+
+    $voice->[0] .= $duration;
+    if ( $mean_register > 0 ) {
+      push @uv, join " ", @$voice;
+    } else {
+      push @lv, join " ", @$voice;
+    }
+  }
+
+  if (@uv) {
+    $ly_upper_voices = "<< {\n" . join( "\n} \\\\ {\n", @uv ) . "\n} >>\n";
+  }
+  if (@lv) {
+    $ly_lower_voices = "<< {\n" . join( "\n} \\\\ {\n", @lv ) . "\n} >>\n";
+  }
+}
+
+$exit_status = print <<"END_TMPL";
+\\version "2.12.0"
+
+#(define-markup-list-command (paragraph layout props args) (markup-list?)
+ (interpret-markup-list layout props
+   (make-justified-lines-markup-list (cons (make-hspace-markup 2) args))))
+
+\\header {
+  title    = "Progression TODO"
+  subtitle = "Music::Chord::Positions v.$Music::Chord::Positions::VERSION"
+}
+
+upper = {
+  \\clef treble
+
+  $ly_upper_voices
+}
+
+lower = {
+  \\clef bass
+
+  $ly_lower_voices
+}
+
+\\markuplines { \\paragraph {
+TODO any metadata on what is being generated
+} }
+
+\\score {
+  \\new PianoStaff <<
+    \\new Staff = "upper" \\upper
+    \\new Staff = "lower" \\lower
+  >>
+  \\layout { }
+  \\midi { }
+}
+END_TMPL
