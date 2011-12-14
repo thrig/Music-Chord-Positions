@@ -18,11 +18,11 @@ use Music::Chord::Positions qw/:all/;
 use POSIX qw/floor/;
 
 my (
-  @orig_args,   @progression,     %interval_sets,   %params,
-  %pitch2note,  %pitch_input,     %registers,       $duration,
-  $exit_status, $flats,           $fudge,           $leap_root_max,
-  $leap_max,    $ly_lower_voices, $ly_upper_voices, $mode,
-  $transpose,
+  @orig_args,     @progression, %interval_sets,   %params,
+  %pitch2note,    %pitch_input, %registers,       $duration,
+  $exit_status,   $flats,       $fudge,           $key,
+  $leap_root_max, $leap_max,    $ly_lower_voices, $ly_upper_voices,
+  $mode,          $transpose,
 );
 $exit_status = 0;
 
@@ -75,15 +75,21 @@ $leap_root_max = 7;
 );
 $duration        = 2;
 $fudge           = 0.1;
+$key             = '\\key c \\major';
 $ly_lower_voices = $ly_upper_voices = '';
 $transpose       = 0;
 
-@orig_args = ( map { $_ =~ tr/"/'/; $_ } basename($0), @ARGV );
+@orig_args = (
+  map { my $s = $_; $s =~ s/\\/\\\\/g; $s =~ s/"/\\"/g; $s } basename($0),
+  @ARGV
+);
 GetOptions(
   'flats'           => \$flats,
+  'key=s'           => \$key,
   'mode=s'          => \$mode,
   'max-leap=s'      => \$leap_max,
   'max-root-leap=s' => \$leap_root_max,
+  'transpose=s'     => \$transpose,
 );
 @progression = @ARGV;
 die "Usage: $0 --mode=major I III\n"
@@ -135,11 +141,17 @@ if ($flats) {
     }
     my $mean_register = floor( sum(@registers) / @$voice + $fudge );
 
+    my $b;
+
     $voice->[0] .= $duration;
     if ( $mean_register > 0 ) {
-      push @uv, join " ", @$voice;
+      $b = 0;
+      push @uv, join " ",
+        map { $_, ( ++$b % @progression == 0 ) ? '\\bar "||"' : () } @$voice;
     } else {
-      push @lv, join " ", @$voice;
+      $b = 0;
+      push @lv, join " ",
+        map { $_, ( ++$b % @progression == 0 ) ? '\\bar "||"' : () } @$voice;
     }
   }
 
@@ -159,23 +171,25 @@ $exit_status = print <<"END_TMPL";
    (make-justified-lines-markup-list (cons (make-hspace-markup 2) args))))
 
 \\header {
-  title    = "Progressions"
+  title    = "Progressions for @progression ($mode)"
   subtitle = "Music::Chord::Positions v.$Music::Chord::Positions::VERSION"
 }
 
 upper = {
   \\clef treble
   \\tempo 4=144
+  $key
   $ly_upper_voices
 }
 
 lower = {
   \\clef bass
+  $key
   $ly_lower_voices
 }
 
 \\markuplines { \\paragraph {
-@orig_args
+"@orig_args"
 } }
 
 \\score {
