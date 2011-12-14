@@ -131,7 +131,7 @@ if ( $chord_spec =~ m/[A-Za-z()-]/ or $chord_spec =~ m/^\s*\d+\s*$/ ) {
     for my $pitch (@$voice) {
       $pitch += $transpose if $transpose;
       my $ly_pitch = $pitch2note{ $pitch % scale_deg() };
-      my $reg_num  = int( $pitch / scale_deg() );
+      my $reg_num  = floor( $pitch / scale_deg() );
       push @registers, $reg_num;
 
       $pitch = $ly_pitch . $registers{$reg_num};
