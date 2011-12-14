@@ -5,8 +5,9 @@
 # prevent awkward 3rds in middle of otherwise open chord.)
 #
 # TODO options to control voice leadings (nix || 5ths or whatnot, avoid
-# case where one voice falls to pitch occupied by prior voice, etc), set
-# key in output, auto-tie if voice does not change between chords.
+# case where one voice falls to pitch occupied by prior voice, etc), auto-
+# tie if voice does not change between chords. Also, support
+# progressions longer than just two.
 
 use strict;
 use warnings;
