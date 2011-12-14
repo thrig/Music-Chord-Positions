@@ -1,13 +1,12 @@
 #!/usr/bin/perl
 #
-# Generate combinations of different chord voicings between two
-# different scale degrees. (Using 'no_partial_closed' parameter to
-# prevent awkward 3rds in middle of otherwise open chord.)
+# Generate combinations of different chord voicings between different
+# scale degrees. (Using 'no_partial_closed' parameter to prevent awkward
+# 3rds in middle of otherwise open chord.)
 #
 # TODO options to control voice leadings (nix || 5ths or whatnot, avoid
-# case where one voice falls to pitch occupied by prior voice, etc), auto-
-# tie if voice does not change between chords. Also, support
-# progressions longer than just two.
+# case where one voice falls to pitch occupied by prior voice, etc).
+# Also, support progressions longer than just two.
 
 use strict;
 use warnings;
@@ -23,7 +22,7 @@ my (
   %pitch2note,    %pitch_input, %registers,       $duration,
   $exit_status,   $flats,       $fudge,           $key,
   $leap_root_max, $leap_max,    $ly_lower_voices, $ly_upper_voices,
-  $mode,          $transpose,
+  $mode,          $transpose,   $use_ties,
 );
 $exit_status = 0;
 
@@ -90,6 +89,7 @@ GetOptions(
   'mode=s'          => \$mode,
   'max-leap=s'      => \$leap_max,
   'max-root-leap=s' => \$leap_root_max,
+  'ties'            => \$use_ties,
   'transpose=s'     => \$transpose,
 );
 @progression = @ARGV;
@@ -132,27 +132,31 @@ if ($flats) {
 
   for my $voice (@voices) {
     my ( @registers, $mean_reg_num );
-    for my $pitch (@$voice) {
-      $pitch += $transpose if $transpose;
-      my $ly_pitch = $pitch2note{ $pitch % scale_deg() };
-      my $reg_num  = floor( $pitch / scale_deg() );
+    for my $pi ( 0 .. $#$voice ) {
+      $voice->[$pi] += $transpose if $transpose;
+      my $ly_pitch = $pitch2note{ $voice->[$pi] % scale_deg() };
+      my $reg_num  = floor( $voice->[$pi] / scale_deg() );
       push @registers, $reg_num;
 
-      $pitch = $ly_pitch . $registers{$reg_num};
+      $voice->[$pi] = $ly_pitch . $registers{$reg_num};
+      $voice->[ $pi - 1 ] .= '~'
+        if $use_ties
+          and $voice->[ $pi - 1 ] eq $voice->[$pi]
+          and $pi % @progression != 0;
     }
     my $mean_register = floor( sum(@registers) / @$voice + $fudge );
 
-    my $b;
-
     $voice->[0] .= $duration;
+
+    my $bar_count = 0;
     if ( $mean_register > 0 ) {
-      $b = 0;
       push @uv, join " ",
-        map { $_, ( ++$b % @progression == 0 ) ? '\\bar "||"' : () } @$voice;
+        map { $_, ( ++$bar_count % @progression == 0 ) ? '\\bar "||"' : () }
+        @$voice;
     } else {
-      $b = 0;
       push @lv, join " ",
-        map { $_, ( ++$b % @progression == 0 ) ? '\\bar "||"' : () } @$voice;
+        map { $_, ( ++$bar_count % @progression == 0 ) ? '\\bar "||"' : () }
+        @$voice;
     }
   }
 
@@ -201,6 +205,10 @@ lower = {
   \\layout { }
   \\midi { }
 }
+
+\\markuplines { \\paragraph {
+Progressions derived from methods outlined in \\underline "Theory of Harmony" by Schoenberg.
+} }
 END_TMPL
 
 END {
