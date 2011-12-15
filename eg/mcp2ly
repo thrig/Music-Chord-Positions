@@ -154,7 +154,14 @@ if ( $chord_spec =~ m/[A-Za-z()-]/ or $chord_spec =~ m/^\s*\d+\s*$/ ) {
   }
 }
 
-$exit_status = print <<"END_TMPL";
+exit lyify();
+
+########################################################################
+#
+# SUBROUTINES
+
+sub lyify {
+  print <<"END_TMPL";
 \\version "2.12.0"
 
 #(define-markup-list-command (paragraph layout props args) (markup-list?)
@@ -168,13 +175,11 @@ $exit_status = print <<"END_TMPL";
 
 upper = {
   \\clef treble
-
   $ly_upper_voices
 }
 
 lower = {
   \\clef bass
-
   $ly_lower_voices
 }
 
@@ -191,19 +196,7 @@ lower = {
   \\midi { }
 }
 END_TMPL
-
-END {
-  unless ( close(STDOUT) ) {
-    warn "error: problem closing STDOUT: $!\n";
-    exit 74;
-  }
 }
-
-exit $exit_status;
-
-########################################################################
-#
-# SUBROUTINES
 
 sub print_help {
   warn <<"END_USAGE";
@@ -226,3 +219,11 @@ Options:
 
 END_USAGE
 }
+
+END {
+  unless ( close(STDOUT) ) {
+    warn "error: problem closing STDOUT: $!\n";
+    exit 74;
+  }
+}
+
