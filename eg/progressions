@@ -10,8 +10,10 @@
 # TODO options to control voice leadings (nix || 5ths or whatnot, avoid
 # case where one voice falls to pitch occupied by prior voice, etc).
 #
-# TODO  support progressions longer than just two.
 # TODO rename util, or merge with mcp2ly, and move ly conversion into module?
+#
+# TODO audit various modes for correctness (take data and generate scales from
+# them? also see what chord_voc is returning)
 
 use strict;
 use warnings;
@@ -23,11 +25,11 @@ use Music::Chord::Positions qw/:all/;
 use POSIX qw/floor/;
 
 my (
-  @orig_args,     @progression, %interval_sets,   %params,
-  %pitch2note,    %pitch_input, %registers,       $duration,
-  $exit_status,   $flats,       $fudge,           $key,
-  $leap_root_max, $leap_max,    $ly_lower_voices, $ly_upper_voices,
-  $mode,          $transpose,   $use_ties,
+  @orig_args,       @phrase,        %interval_sets, %params,
+  %pitch2note,      %Scale_Degs,    %registers,     $duration,
+  $exit_status,     $flats,         $fudge,         $just_one,
+  $key,             $leap_root_max, $leap_max,      $ly_lower_voices,
+  $ly_upper_voices, $mode,          $transpose,     $use_ties,
 );
 $exit_status = 0;
 
@@ -44,7 +46,7 @@ $leap_root_max = 7;
   '5th-dim'   => [ chord_pos( [qw/0 3 6/], %params ) ],
   '5th-aug'   => [ chord_pos( [qw/0 4 8/], %params ) ],
 );
-%pitch_input = (
+%Scale_Degs = (
   major => {
     I   => { ps => $interval_sets{'5th-major'}, t => 0 },
     II  => { ps => $interval_sets{'5th-minor'}, t => 2 },
@@ -110,8 +112,8 @@ $leap_root_max = 7;
   },
 );
 
-$pitch_input{'ionain'}  = $pitch_input{'major'};
-$pitch_input{'aeolian'} = $pitch_input{'minor'};
+$Scale_Degs{'ionain'}  = $Scale_Degs{'major'};
+$Scale_Degs{'aeolian'} = $Scale_Degs{'minor'};
 
 %pitch2note =
   qw( 0 c 1 cis 2 d 3 dis 4 e 5 f 6 fis 7 g 8 gis 9 a 10 ais 11 b );
@@ -126,8 +128,8 @@ $pitch_input{'aeolian'} = $pitch_input{'minor'};
   4  => "''''",
   5  => "'''''"
 );
-$duration        = 2;
-$fudge           = 0.1;
+$duration        = 4;
+$fudge           = 0.5;
 $key             = '\\key c \\major';
 $ly_lower_voices = $ly_upper_voices = '';
 $transpose       = 0;
@@ -138,17 +140,19 @@ $transpose       = 0;
 );
 GetOptions(
   'flats'           => \$flats,
+  'fudge|f=s'       => \$fudge,
+  'just-one'        => \$just_one,
   'key=s'           => \$key,
   'mode=s'          => \$mode,
   'max-leap=s'      => \$leap_max,
   'max-root-leap=s' => \$leap_root_max,
   'param|p=s'       => \%params,
   'ties'            => \$use_ties,
-  'transpose=s'     => \$transpose,
+  'transpose|t=s'   => \$transpose,
 );
-@progression = @ARGV;
+@phrase = @ARGV;
 
-if ( !defined $mode or !@progression or @progression < 2 ) {
+if ( !defined $mode or !@phrase or @phrase < 2 ) {
   print_help();
   exit 64;
 }
@@ -162,23 +166,33 @@ if ($flats) {
 # voices should be in. TODO messy, really should be templated or part of
 # the module.
 {
-  my ( @voices, @uv, @lv );
+  my ( @iters, @lv, @voices, @uv );
+  @iters = (0) x @phrase;
 
-  for my $ps1 ( @{ $pitch_input{$mode}{ $progression[0] }{'ps'} } ) {
-    my @from = map { $_ + $pitch_input{$mode}{ $progression[0] }{'t'} } @$ps1;
-
-    for my $ps2 ( @{ $pitch_input{$mode}{ $progression[1] }{'ps'} } ) {
-      my @above =
-        map { $_ + $pitch_input{$mode}{ $progression[1] }{'t'} } @$ps2;
-      my @below =
-        map { $_ - scale_deg() + $pitch_input{$mode}{ $progression[1] }{'t'} }
-        @$ps2;
-
-      if ( check_dest( \@from, \@above ) ) {
-        push @voices, \@from, \@above;
+PHRASE:
+  while ( $iters[0] <= $#{ $Scale_Degs{$mode}{ $phrase[0] }{'ps'} } ) {
+  POTENTIAL:
+    while ( $iters[-1] <= $#{ $Scale_Degs{$mode}{ $phrase[-1] }{'ps'} } ) {
+      my @chords;
+      for my $i ( 0 .. $#iters ) {
+        push @chords,
+          [ map { $_ + $Scale_Degs{$mode}{ $phrase[$i] }{'t'} }
+            @{ $Scale_Degs{$mode}{ $phrase[$i] }{'ps'}[ $iters[$i] ] } ];
+        if ( @chords > 1 ) {
+          next POTENTIAL unless check_dest( @chords[ -2, -1 ] );
+        }
       }
-      if ( check_dest( \@from, \@below ) ) {
-        push @voices, \@from, \@below;
+      push @voices, @chords;
+      last PHRASE if $just_one;
+    } continue {
+      $iters[-1]++;
+    }
+
+    # Increment counters for chords in middle of phrase if necessary
+    for my $i ( reverse 1 .. $#iters ) {
+      if ( $iters[$i] > $#{ $Scale_Degs{$mode}{ $phrase[$i] }{'ps'} } ) {
+        $iters[ $i - 1 ]++;
+        $iters[$i] = 0;
       }
     }
   }
@@ -197,7 +211,7 @@ if ($flats) {
       $voice->[ $pi - 1 ] .= '~'
         if $use_ties
           and $voice->[ $pi - 1 ] eq $voice->[$pi]
-          and $pi % @progression != 0;
+          and $pi % @phrase != 0;
     }
     my $mean_register = floor( sum(@registers) / @$voice + $fudge );
 
@@ -206,11 +220,11 @@ if ($flats) {
     my $bar_count = 0;
     if ( $mean_register > 0 ) {
       push @uv, join " ",
-        map { $_, ( ++$bar_count % @progression == 0 ) ? '\\bar "||"' : () }
+        map { $_, ( ++$bar_count % @phrase == 0 ) ? '\\bar "||"' : () }
         @$voice;
     } else {
       push @lv, join " ",
-        map { $_, ( ++$bar_count % @progression == 0 ) ? '\\bar "||"' : () }
+        map { $_, ( ++$bar_count % @phrase == 0 ) ? '\\bar "||"' : () }
         @$voice;
     }
   }
@@ -230,6 +244,7 @@ exit lyify();
 # SUBROUTINES
 
 sub lyify {
+  my $Mode = ucfirst $mode;
   print <<"END_TMPL";
 \\version "2.12.0"
 
@@ -238,19 +253,22 @@ sub lyify {
    (make-justified-lines-markup-list (cons (make-hspace-markup 2) args))))
 
 \\header {
-  title    = "Progressions for @progression ($mode)"
+  title    = "@phrase in $Mode"
   subtitle = "Music::Chord::Positions v.$Music::Chord::Positions::VERSION"
+  tagline  = ##f
 }
 
 upper = {
   \\clef treble
-  \\tempo 4=144
+  \\tempo 4=168
+  \\cadenzaOn
   $key
   $ly_upper_voices
 }
 
 lower = {
   \\clef bass
+  \\cadenzaOn
   $key
   $ly_lower_voices
 }
@@ -307,6 +325,7 @@ Options:
   mode=s           Mode, such as major, minor, dorian, etc. Required.
 
   flats            Use flats instead of sharps in output.
+  fudge|f=s        Fudge factor for what clef voices end up in.
   key=s            Lilypond key, such as '\\key c \\minor' or whatever.
   max-leap=s       Largest semitone leap a non-root voice can make (5).
   max-root-leap=s  Largest semitone leap the root can make (7).
