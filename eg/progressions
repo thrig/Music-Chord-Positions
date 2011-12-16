@@ -128,7 +128,7 @@ $Scale_Degs{'aeolian'} = $Scale_Degs{'minor'};
   4  => "''''",
   5  => "'''''"
 );
-$duration        = 4;
+$duration        = 1;
 $fudge           = 0.5;
 $key             = '\\key c \\major';
 $ly_lower_voices = $ly_upper_voices = '';
