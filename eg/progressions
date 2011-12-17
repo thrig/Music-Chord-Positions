@@ -217,6 +217,21 @@ exit lyify();
 #
 # SUBROUTINES
 
+# Audit that voices do not leap too far between two chords of a phrase.
+# If transpositions allowed in generation, may need to audit for repeated
+# interval sets (same chords in different register).
+sub check_dest {
+  my ( $from, $to ) = @_;
+  my %seen;
+
+  return 0 if abs( $to->[0] - $from->[0] ) > $leap_root_max;
+  for my $vi ( 1 .. $#$from ) {
+    return 0 if abs( $to->[$vi] - $from->[$vi] ) > $leap_max;
+  }
+
+  return 1;
+}
+
 # This method keeps the voices within a certain range, as all the roots
 # are those above and below 0 (transposed as necessary for the scale
 # degree), and the voices will only wander as far as the leap settings
@@ -296,27 +311,6 @@ lower = {
 Progressions derived from methods outlined in \\underline "Theory of Harmony" by Schoenberg.
 } }
 END_TMPL
-}
-
-sub check_dest {
-  my ( $from, $to ) = @_;
-  my %seen;
-
-  return 0 if abs( $to->[0] - $from->[0] ) > $leap_root_max;
-  for my $vi ( 1 .. $#$from ) {
-    return 0 if abs( $to->[$vi] - $from->[$vi] ) > $leap_max;
-  }
-
-  my @intervals;
-  for my $p ( 1 .. $#$from ) {
-    push @intervals, $from->[$p] - $from->[ $p - 1 ];
-  }
-  for my $p ( 1 .. $#$to ) {
-    push @intervals, $to->[$p] - $to->[ $p - 1 ];
-  }
-  return 0 if $seen{"@intervals"}++;
-
-  return 1;
 }
 
 sub print_help {
