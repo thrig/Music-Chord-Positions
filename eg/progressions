@@ -25,11 +25,11 @@ use Music::Chord::Positions qw/:all/;
 use POSIX qw/floor/;
 
 my (
-  @orig_args,       @phrase,        %interval_sets, %params,
-  %pitch2note,      %Scale_Degs,    %registers,     $duration,
-  $exit_status,     $flats,         $fudge,         $just_one,
-  $key,             $leap_root_max, $leap_max,      $ly_lower_voices,
-  $ly_upper_voices, $mode,          $transpose,     $use_ties,
+  @orig_args,     @phrase,       %interval_sets,   %params,
+  %pitch2note,    %Scale_Degs,   %registers,       $duration,
+  $exit_status,   $flats,        $fudge,           $key,
+  $leap_root_max, $leap_max,     $ly_lower_voices, $ly_upper_voices,
+  $mode,          $phrase_count, $transpose,       $use_ties,
 );
 $exit_status = 0;
 
@@ -141,7 +141,6 @@ $transpose       = 0;
 GetOptions(
   'flats'           => \$flats,
   'fudge|f=s'       => \$fudge,
-  'just-one'        => \$just_one,
   'key=s'           => \$key,
   'mode=s'          => \$mode,
   'max-leap=s'      => \$leap_max,
@@ -162,40 +161,15 @@ if ($flats) {
     qw( 0 c 1 des 2 d 3 ees 4 e 5 f 6 ges 7 g 8 aes 9 a 10 bes 11 b );
 }
 
-# Get voice lines, convert to lilypond format, figure out what staff the
-# voices should be in. TODO messy, really should be templated or part of
-# the module.
 {
   my ( @iters, @lv, @voices, @uv );
   @iters = (0) x @phrase;
 
-PHRASE:
-  while ( $iters[0] <= $#{ $Scale_Degs{$mode}{ $phrase[0] }{'ps'} } ) {
-  POTENTIAL:
-    while ( $iters[-1] <= $#{ $Scale_Degs{$mode}{ $phrase[-1] }{'ps'} } ) {
-      my @chords;
-      for my $i ( 0 .. $#iters ) {
-        push @chords,
-          [ map { $_ + $Scale_Degs{$mode}{ $phrase[$i] }{'t'} }
-            @{ $Scale_Degs{$mode}{ $phrase[$i] }{'ps'}[ $iters[$i] ] } ];
-        if ( @chords > 1 ) {
-          next POTENTIAL unless check_dest( @chords[ -2, -1 ] );
-        }
-      }
-      push @voices, @chords;
-      last PHRASE if $just_one;
-    } continue {
-      $iters[-1]++;
-    }
-
-    # Increment counters for chords in middle of phrase if necessary
-    for my $i ( reverse 1 .. $#iters ) {
-      if ( $iters[$i] > $#{ $Scale_Degs{$mode}{ $phrase[$i] }{'ps'} } ) {
-        $iters[ $i - 1 ]++;
-        $iters[$i] = 0;
-      }
-    }
+  for my $ps ( @{ $Scale_Degs{$mode}{ $phrase[0] }{'ps'} } ) {
+    gen_phrase( 1, [$ps], \@voices );
   }
+  die "error: no voicings generated (options too restrictive?)\n" if !@voices;
+  warn "info: generated $phrase_count phrases\n";
 
   @voices = chords2voices(@voices);
 
@@ -243,6 +217,37 @@ exit lyify();
 #
 # SUBROUTINES
 
+# This method keeps the voices within a certain range, as all the roots
+# are those above and below 0 (transposed as necessary for the scale
+# degree), and the voices will only wander as far as the leap settings
+# and available chord voicings permit. A different method could be
+# devised that would pick new roots around the root of the previous
+# chord; this would likely cause the musical line to wander more, as the
+# chord voicings could end up in progressively distant registers from 0.
+sub gen_phrase {
+  my ( $index, $pphrase, $voices ) = @_;
+
+  for my $ps ( @{ $Scale_Degs{$mode}{ $phrase[$index] }{'ps'} } ) {
+    for my $offset (
+      $Scale_Degs{$mode}{ $phrase[$index] }{'t'},
+      -12 + $Scale_Degs{$mode}{ $phrase[$index] }{'t'}
+      ) {
+      my $potential = [ @$pphrase, [ map { $_ + $offset } @$ps ] ];
+
+      if ( !check_dest( $potential->[-2], $potential->[-1] ) ) {
+        next;
+      }
+
+      if ( $index < $#phrase ) {
+        gen_phrase( $index + 1, $potential, $voices );
+      } else {
+        push @$voices, @{$potential};
+        $phrase_count++;
+      }
+    }
+  }
+}
+
 sub lyify {
   my $Mode = ucfirst $mode;
   print <<"END_TMPL";
@@ -279,6 +284,7 @@ lower = {
 
 \\score {
   \\new PianoStaff <<
+    \\set PianoStaff.midiInstrument = #"Church Organ"
     \\new Staff = "upper" \\upper
     \\new Staff = "lower" \\lower
   >>
