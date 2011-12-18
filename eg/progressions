@@ -2,17 +2,16 @@
 #
 # Generate combinations of different chord voicings between different
 # scale degrees. (Using 'no_partial_closed' parameter to prevent awkward
-# 3rds in middle of otherwise open chord.) Example usages:
+# 3rds in middle of otherwise open chord.) Example:
 #
 #   progressions --mode=minor --key='c minor' --flats \
 #    --max-leap=7 --max-root-leap=8   I VI     > minor-I-VI.ly
 #
-# Longer phrases will need output file splitting, as lilypond gets to
-# "Processing graphical objects" then vanishes from the process table if
-# given too much data:
+# Longer phrases will need output file splitting, as lilypond may be
+# incapable of rendering 78,704 Pachebel phrases:
 #
 #   progressions -t=2 -f=0.1 --ties --mode=major --key='d major' \
-#    --output=sequence I V VI III IV I
+#    --output=sequence I V VI III IV I IV V
 #
 # TODO options to control voice leadings (nix || 5ths or whatnot, avoid
 # case where one voice falls to pitch occupied by prior voice, etc).
