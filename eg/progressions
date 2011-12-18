@@ -2,10 +2,17 @@
 #
 # Generate combinations of different chord voicings between different
 # scale degrees. (Using 'no_partial_closed' parameter to prevent awkward
-# 3rds in middle of otherwise open chord.) Example usage:
+# 3rds in middle of otherwise open chord.) Example usages:
 #
-# progressions --mode=minor --key='\key c \minor' --flats \
+#   progressions --mode=minor --key='\key c \minor' --flats \
 #    --max-leap=7 --max-root-leap=8   I VI     > minor-I-VI.ly
+#
+# Longer phrases will need output file splitting, as lilypond gets to
+# "Processing graphical objects" then vanishes from the process table if
+# given too much data:
+#
+#   progressions -t=2 -f=0.1 --ties --mode=major --key='\key d \major' \
+#    --output=sequence I V VI III IV I
 #
 # TODO options to control voice leadings (nix || 5ths or whatnot, avoid
 # case where one voice falls to pitch occupied by prior voice, etc).
@@ -25,13 +32,15 @@ use Music::Chord::Positions qw/:all/;
 use POSIX qw/floor/;
 
 my (
-  @orig_args,     @phrase,       %interval_sets,   %params,
-  %pitch2note,    %Scale_Degs,   %registers,       $duration,
-  $exit_status,   $flats,        $fudge,           $key,
-  $leap_root_max, $leap_max,     $ly_lower_voices, $ly_upper_voices,
-  $mode,          $phrase_count, $transpose,       $use_ties,
+  @orig_args, @phrase,      @voices,          %interval_sets,
+  %params,    %pitch2note,  %Scale_Degs,      %registers,
+  $duration,  $exit_status, $file_counter,    $flats,
+  $fudge,     $key,         $leap_root_max,   $leap_max,
+  $mode,      $output_file, $output_file_max, $phrase_count,
+  $transpose, $use_ties,
 );
-$exit_status = 0;
+$exit_status     = 0;
+$output_file_max = 500;
 
 $leap_max      = 5;
 $leap_root_max = 7;
@@ -128,11 +137,10 @@ $Scale_Degs{'aeolian'} = $Scale_Degs{'minor'};
   4  => "''''",
   5  => "'''''"
 );
-$duration        = 1;
-$fudge           = 0.5;
-$key             = '\\key c \\major';
-$ly_lower_voices = $ly_upper_voices = '';
-$transpose       = 0;
+$duration  = 1;
+$fudge     = 0.5;
+$key       = '\\key c \\major';
+$transpose = 0;
 
 @orig_args = (
   map { my $s = $_; $s =~ s/\\/\\\\/g; $s =~ s/"/\\"/g; $s } basename($0),
@@ -144,7 +152,9 @@ GetOptions(
   'key=s'           => \$key,
   'mode=s'          => \$mode,
   'max-leap=s'      => \$leap_max,
+  'max-per-file=s'  => \$output_file_max,
   'max-root-leap=s' => \$leap_root_max,
+  'output|o=s'      => \$output_file,
   'param|p=s'       => \%params,
   'ties'            => \$use_ties,
   'transpose|t=s'   => \$transpose,
@@ -161,57 +171,38 @@ if ($flats) {
     qw( 0 c 1 des 2 d 3 ees 4 e 5 f 6 ges 7 g 8 aes 9 a 10 bes 11 b );
 }
 
-{
-  my ( @iters, @lv, @voices, @uv );
-  @iters = (0) x @phrase;
+for my $ps ( @{ $Scale_Degs{$mode}{ $phrase[0] }{'ps'} } ) {
+  gen_phrase( 1, [$ps], \@voices );
+}
+die "error: no voicings generated (options too restrictive?)\n" if !@voices;
+warn "info: generated $phrase_count phrases\n";
 
-  for my $ps ( @{ $Scale_Degs{$mode}{ $phrase[0] }{'ps'} } ) {
-    gen_phrase( 1, [$ps], \@voices );
-  }
-  die "error: no voicings generated (options too restrictive?)\n" if !@voices;
-  warn "info: generated $phrase_count phrases\n";
-
+if ( !$output_file ) {
   @voices = chords2voices(@voices);
-
-  for my $voice (@voices) {
-    my ( @registers, $mean_reg_num );
-    for my $pi ( 0 .. $#$voice ) {
-      $voice->[$pi] += $transpose if $transpose;
-      my $ly_pitch = $pitch2note{ $voice->[$pi] % scale_deg() };
-      my $reg_num  = floor( $voice->[$pi] / scale_deg() );
-      push @registers, $reg_num;
-
-      $voice->[$pi] = $ly_pitch . $registers{$reg_num};
-      $voice->[ $pi - 1 ] .= '~'
-        if $use_ties
-          and $voice->[ $pi - 1 ] eq $voice->[$pi]
-          and $pi % @phrase != 0;
-    }
-    my $mean_register = floor( sum(@registers) / @$voice + $fudge );
-
-    $voice->[0] .= $duration;
-
-    my $bar_count = 0;
-    if ( $mean_register > 0 ) {
-      push @uv, join " ",
-        map { $_, ( ++$bar_count % @phrase == 0 ) ? '\\bar "||"' : () }
-        @$voice;
-    } else {
-      push @lv, join " ",
-        map { $_, ( ++$bar_count % @phrase == 0 ) ? '\\bar "||"' : () }
-        @$voice;
-    }
+  unless ( lyify( \@voices ) ) {
+    warn "warning: problem emitting lilypond data\n";
+    $exit_status = 1;
   }
+} else {
+  $output_file =~ s/\.ly$//;
+  my $file_count_pad = length int( $phrase_count / $output_file_max );
 
-  if (@uv) {
-    $ly_upper_voices = "<< {\n" . join( "\n} \\\\ {\n", @uv ) . "\n} >>\n";
-  }
-  if (@lv) {
-    $ly_lower_voices = "<< {\n" . join( "\n} \\\\ {\n", @lv ) . "\n} >>\n";
+  while ( my @subset = splice( @voices, 0, $output_file_max * @phrase ) ) {
+    @subset = chords2voices(@subset);
+    my $out_file = $output_file
+      . sprintf( "%0*d", $file_count_pad, ++$file_counter ) . ".ly";
+    open( my $out_fh, '>', $out_file )
+      or die "error: cannot write '$out_file': $!\n";
+    select $out_fh or die "error: cannot select filehandle: $!\n";
+
+    unless ( lyify( \@subset ) ) {
+      warn "warning: problem emitting lilypond data\n";
+      $exit_status = 1;
+    }
   }
 }
 
-exit lyify();
+exit $exit_status;
 
 ########################################################################
 #
@@ -264,7 +255,49 @@ sub gen_phrase {
 }
 
 sub lyify {
+  my ($voices) = @_;
+  my ( @lv, @uv, $ly_lower_voices, $ly_upper_voices );
+  $ly_lower_voices = $ly_upper_voices = '';
+
+  for my $voice (@$voices) {
+    my ( @registers, $mean_reg_num );
+    for my $pi ( 0 .. $#$voice ) {
+      $voice->[$pi] += $transpose if $transpose;
+      my $ly_pitch = $pitch2note{ $voice->[$pi] % scale_deg() };
+      my $reg_num  = floor( $voice->[$pi] / scale_deg() );
+      push @registers, $reg_num;
+
+      $voice->[$pi] = $ly_pitch . $registers{$reg_num};
+      $voice->[ $pi - 1 ] .= '~'
+        if $use_ties
+          and $voice->[ $pi - 1 ] eq $voice->[$pi]
+          and $pi % @phrase != 0;
+    }
+    my $mean_register = floor( sum(@registers) / @$voice + $fudge );
+
+    $voice->[0] .= $duration;
+
+    my $bar_count = 0;
+    if ( $mean_register > 0 ) {
+      push @uv, join " ",
+        map { $_, ( ++$bar_count % @phrase == 0 ) ? '\\bar "||"' . "\n" : () }
+        @$voice;
+    } else {
+      push @lv, join " ",
+        map { $_, ( ++$bar_count % @phrase == 0 ) ? '\\bar "||"' . "\n" : () }
+        @$voice;
+    }
+  }
+
+  if (@uv) {
+    $ly_upper_voices = "<< {\n" . join( "\n} \\\\ {\n", @uv ) . "\n} >>\n";
+  }
+  if (@lv) {
+    $ly_lower_voices = "<< {\n" . join( "\n} \\\\ {\n", @lv ) . "\n} >>\n";
+  }
+
   my $Mode = ucfirst $mode;
+
   print <<"END_TMPL";
 \\version "2.12.0"
 
@@ -333,11 +366,16 @@ Options:
   ties             Generate ties between shared pitches.
   transpose=s      Value in semitones to transpose output by.
 
+If lilypond chokes on the results of a longer phrase, use:
+
+  output|o=s       Output to named file (counter will be added for split).
+  max-per-file=s   Limit output files to this number of phrases (500).
+
 END_USAGE
 }
 
 END {
-  unless ( close(STDOUT) ) {
+  if ( !$output_file and !close(STDOUT) ) {
     warn "error: problem closing STDOUT: $!\n";
     exit 74;
   }
