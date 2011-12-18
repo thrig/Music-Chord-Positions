@@ -23,13 +23,11 @@ my (
   @orig_args,       %modes,           %params,
   %pitch2note,      %registers,       $LY_DEFAULT_DURATION,
   $chord_spec,      $cn,              $duration,
-  $exit_status,     $flats,           $fudge,
-  $is_conventional, $ly_lower_voices, $ly_upper_voices,
-  $mode,            $omit_orig,       $pitch_set,
-  $reverse,         $shuffle,         $transpose,
-  $voice_count,
+  $flats,           $fudge,           $is_conventional,
+  $ly_lower_voices, $ly_upper_voices, $mode,
+  $omit_orig,       $pitch_set,       $reverse,
+  $shuffle,         $transpose,       $voice_count,
 );
-$exit_status = 0;
 
 @orig_args = ( map { $_ =~ tr/"/'/; $_ } basename($0), @ARGV );
 
@@ -154,7 +152,10 @@ if ( $chord_spec =~ m/[A-Za-z()-]/ or $chord_spec =~ m/^\s*\d+\s*$/ ) {
   }
 }
 
-exit lyify();
+if ( lyify() ) {
+  exit 0;
+}
+die "warning: problem emitting lilypond data\n";
 
 ########################################################################
 #
