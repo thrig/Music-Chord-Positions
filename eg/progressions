@@ -4,14 +4,14 @@
 # scale degrees. (Using 'no_partial_closed' parameter to prevent awkward
 # 3rds in middle of otherwise open chord.) Example usages:
 #
-#   progressions --mode=minor --key='\key c \minor' --flats \
+#   progressions --mode=minor --key='c minor' --flats \
 #    --max-leap=7 --max-root-leap=8   I VI     > minor-I-VI.ly
 #
 # Longer phrases will need output file splitting, as lilypond gets to
 # "Processing graphical objects" then vanishes from the process table if
 # given too much data:
 #
-#   progressions -t=2 -f=0.1 --ties --mode=major --key='\key d \major' \
+#   progressions -t=2 -f=0.1 --ties --mode=major --key='d major' \
 #    --output=sequence I V VI III IV I
 #
 # TODO options to control voice leadings (nix || 5ths or whatnot, avoid
@@ -40,7 +40,7 @@ my (
   $transpose, $use_ties,
 );
 $exit_status     = 0;
-$output_file_max = 500;
+$output_file_max = 100;
 
 $leap_max      = 5;
 $leap_root_max = 7;
@@ -139,12 +139,12 @@ $Scale_Degs{'aeolian'} = $Scale_Degs{'minor'};
 );
 $duration  = 1;
 $fudge     = 0.5;
-$key       = '\\key c \\major';
+$key       = 'c major';
 $transpose = 0;
 
 @orig_args = (
-  map { my $s = $_; $s =~ s/\\/\\\\/g; $s =~ s/"/\\"/g; $s } basename($0),
-  @ARGV
+  map { my $s = $_; $s =~ tr/\\"'//d; $s } basename($0),
+  grep { $_ !~ m/output/ } @ARGV
 );
 GetOptions(
   'flats'           => \$flats,
@@ -259,6 +259,8 @@ sub lyify {
   my ( @lv, @uv, $ly_lower_voices, $ly_upper_voices );
   $ly_lower_voices = $ly_upper_voices = '';
 
+  $key =~ s/^(\w+)\s+(\w+)/\\key $1 \\$2/;
+
   for my $voice (@$voices) {
     my ( @registers, $mean_reg_num );
     for my $pi ( 0 .. $#$voice ) {
@@ -275,7 +277,7 @@ sub lyify {
     }
     my $mean_register = floor( sum(@registers) / @$voice + $fudge );
 
-    $voice->[0] .= $duration;
+    $voice->[0] =~ s/^(\w+[',]+)/$1$duration/;
 
     my $bar_count = 0;
     if ( $mean_register > 0 ) {
@@ -299,7 +301,7 @@ sub lyify {
   my $Mode = ucfirst $mode;
 
   print <<"END_TMPL";
-\\version "2.12.0"
+\\version "2.14.0"
 
 #(define-markup-list-command (paragraph layout props args) (markup-list?)
  (interpret-markup-list layout props
@@ -314,24 +316,25 @@ sub lyify {
 upper = {
   \\clef treble
   \\tempo 4=168
-  \\cadenzaOn
+  \\autoBeamOff
   $key
   $ly_upper_voices
 }
 
 lower = {
   \\clef bass
-  \\cadenzaOn
+  \\autoBeamOff
   $key
   $ly_lower_voices
 }
 
 \\markuplines { \\paragraph {
-"@orig_args"
+@orig_args
 } }
 
 \\score {
   \\new PianoStaff <<
+    \\set Score.midiChannelMapping = #'instrument
     \\set PianoStaff.midiInstrument = #"Church Organ"
     \\new Staff = "upper" \\upper
     \\new Staff = "lower" \\lower
@@ -369,7 +372,7 @@ Options:
 If lilypond chokes on the results of a longer phrase, use:
 
   output|o=s       Output to named file (counter will be added for split).
-  max-per-file=s   Limit output files to this number of phrases (500).
+  max-per-file=s   Limit output files to this number of phrases.
 
 END_USAGE
 }
