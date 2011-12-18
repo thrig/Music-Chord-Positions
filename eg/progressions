@@ -45,14 +45,53 @@ my (
 $exit_status     = 0;
 $output_file_max = 100;
 
-$instrument    = 'Church Organ';    # as suits --ties better than Piano
-$leap_max      = 5;
-$leap_root_max = 7;
-%params        = (
+%params = (
   allow_transpositions => 0,
-  no_partial_closed    => 1,
+  no_partial_closed    => 0,
   voice_count          => 4,
 );
+
+$duration      = 1;
+$fudge         = 0.5;
+$instrument    = 'Church Organ';    # as suits --ties better than Piano
+$key           = 'c major';
+$leap_max      = 5;
+$leap_root_max = 7;
+$transpose     = 0;
+
+%pitch2note =
+  qw( 0 c 1 cis 2 d 3 dis 4 e 5 f 6 fis 7 g 8 gis 9 a 10 ais 11 b );
+%registers = (
+  -3 => ",,,",
+  -2 => ",,",
+  -1 => ",",
+  0  => "",
+  1  => "'",
+  2  => "''",
+  3  => "'''",
+  4  => "''''",
+  5  => "'''''"
+);
+@orig_args = (
+  map { my $s = $_; $s =~ tr/\\"'//d; $s } basename($0),
+  grep { $_ !~ m/(?:instrument|output)/ } @ARGV
+);
+GetOptions(
+  'flats'           => \$flats,
+  'fudge|f=s'       => \$fudge,
+  'instrument=s'    => \$instrument,
+  'key=s'           => \$key,
+  'mode=s'          => \$mode,
+  'max-leap=s'      => \$leap_max,
+  'max-per-file=s'  => \$output_file_max,
+  'max-root-leap=s' => \$leap_root_max,
+  'output|o=s'      => \$output_file,
+  'param|p=s'       => \%params,
+  'ties'            => \$use_ties,
+  'transpose|t=s'   => \$transpose,
+);
+@phrase = @ARGV;
+
 %interval_sets = (
   '5th-major' => [ chord_pos( [qw/0 4 7/], %params ) ],
   '5th-minor' => [ chord_pos( [qw/0 3 7/], %params ) ],
@@ -127,44 +166,6 @@ $leap_root_max = 7;
 
 $Scale_Degs{'ionain'}  = $Scale_Degs{'major'};
 $Scale_Degs{'aeolian'} = $Scale_Degs{'minor'};
-
-%pitch2note =
-  qw( 0 c 1 cis 2 d 3 dis 4 e 5 f 6 fis 7 g 8 gis 9 a 10 ais 11 b );
-%registers = (
-  -3 => ",,,",
-  -2 => ",,",
-  -1 => ",",
-  0  => "",
-  1  => "'",
-  2  => "''",
-  3  => "'''",
-  4  => "''''",
-  5  => "'''''"
-);
-$duration  = 1;
-$fudge     = 0.5;
-$key       = 'c major';
-$transpose = 0;
-
-@orig_args = (
-  map { my $s = $_; $s =~ tr/\\"'//d; $s } basename($0),
-  grep { $_ !~ m/(?:instrument|output)/ } @ARGV
-);
-GetOptions(
-  'flats'           => \$flats,
-  'fudge|f=s'       => \$fudge,
-  'instrument=s'    => \$instrument,
-  'key=s'           => \$key,
-  'mode=s'          => \$mode,
-  'max-leap=s'      => \$leap_max,
-  'max-per-file=s'  => \$output_file_max,
-  'max-root-leap=s' => \$leap_root_max,
-  'output|o=s'      => \$output_file,
-  'param|p=s'       => \%params,
-  'ties'            => \$use_ties,
-  'transpose|t=s'   => \$transpose,
-);
-@phrase = @ARGV;
 
 if ( !defined $mode or !@phrase or @phrase < 2 ) {
   print_help();
