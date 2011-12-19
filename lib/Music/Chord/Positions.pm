@@ -29,6 +29,10 @@ sub chord_inv {
 
   my ( @inversions, $max_pitch, $next_register );
 
+  if ( exists $params{'voice_count'} ) {
+    die "voice_count not supported for inversions";
+  }
+
   $max_pitch     = max(@$pitch_set);
   $next_register = $max_pitch + $DEG_IN_SCALE - $max_pitch % $DEG_IN_SCALE;
 
