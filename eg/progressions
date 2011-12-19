@@ -178,7 +178,9 @@ if ($flats) {
 }
 
 for my $ps ( @{ $Scale_Degs{$mode}{ $phrase[0] }{'ps'} } ) {
-  gen_phrase( 1, [$ps], \@voices );
+  gen_phrase( 1,
+    [ [ map { $_ + $Scale_Degs{$mode}{ $phrase[0] }{'t'} } @$ps ] ],
+    \@voices );
 }
 die "error: no voicings generated (options too restrictive?)\n" if !@voices;
 warn "info: generated $phrase_count phrases\n";
