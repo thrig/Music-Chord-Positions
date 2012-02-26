@@ -12,18 +12,6 @@
 #
 #   progressions -t=2 -f=0.1 --ties --mode=major --key='d major' \
 #    --output=sequence I V VI III IV I IV V
-#
-# TODO rename util, or merge with mcp2ly, and move ly conversion into module?
-#
-# TODO audit various modes for correctness (take data and generate scales from
-# them? also see what chord_voc is returning)
-#
-# TODO really need "tagging" of phrases or chords, so can associate
-# arbitrary metadata with the chord (e.g. the roman numeral, or "awkward
-# thrids" or etc) or phrase (to outline parallel fifths, etc).
-#
-# TODO also means for stats, so can see how many unique bass phrases
-# have been generated, how much variance the lines have, etc.
 
 use strict;
 use warnings;
@@ -35,12 +23,12 @@ use Music::Chord::Positions qw/:all/;
 use POSIX qw/floor/;
 
 my (
-  @orig_args,    @phrase,      @voices,       %interval_sets,
-  %params,       %pitch2note,  %Scale_Degs,   %registers,
-  $duration,     $exit_status, $file_counter, $flats,
-  $fudge,        $instrument,  $key,          $leap_root_max,
-  $leap_max,     $mode,        $output_file,  $output_file_max,
-  $phrase_count, $transpose,   $use_ties,
+  @orig_args,       @phrase,       @voices,       %interval_sets,
+  %params,          %pitch2note,   %Scale_Degs,   %registers,
+  $duration,        $exit_status,  $file_counter, $flats,
+  $fudge,           $instrument,   $inversions,   $key,
+  $leap_root_max,   $leap_max,     $mode,         $output_file,
+  $output_file_max, $phrase_count, $transpose,    $use_ties,
 );
 $exit_status     = 0;
 $output_file_max = 100;
@@ -80,6 +68,7 @@ GetOptions(
   'flats'           => \$flats,
   'fudge|f=s'       => \$fudge,
   'instrument=s'    => \$instrument,
+  'inversions'      => \$inversions,
   'key=s'           => \$key,
   'mode=s'          => \$mode,
   'max-leap=s'      => \$leap_max,
