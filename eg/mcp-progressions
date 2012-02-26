@@ -4,13 +4,13 @@
 # scale degrees. (Using 'no_partial_closed' parameter to prevent awkward
 # 3rds in middle of otherwise open chord.) Example:
 #
-#   progressions --mode=minor --key='c minor' --flats \
+#   mcp-progressions --mode=minor --key='c minor' --flats \
 #    --max-leap=7 --max-root-leap=8   I VI     > minor-I-VI.ly
 #
 # Longer phrases will need output file splitting, as lilypond may be
 # incapable of rendering all the combinations in a single document:
 #
-#   progressions -t=2 -f=0.1 --ties --mode=major --key='d major' \
+#   mcp-progressions -t=2 -f=0.1 --ties --mode=major --key='d major' \
 #    --output=sequence I V VI III IV I IV V
 
 use strict;
@@ -153,7 +153,7 @@ GetOptions(
   },
 );
 
-$Scale_Degs{'ionain'}  = $Scale_Degs{'major'};
+$Scale_Degs{'ionian'}  = $Scale_Degs{'major'};
 $Scale_Degs{'aeolian'} = $Scale_Degs{'minor'};
 
 if ( !defined $mode or !@phrase or @phrase < 2 ) {
