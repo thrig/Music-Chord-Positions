@@ -1,3 +1,25 @@
+# TODO
+# * chord_pos
+#   - support arbitrary? voice counts (would need doubling rules?) Extra
+#     voices would likely run into either doubling or maximum pitch
+#     limits, so might need good-enough effort (or lots of doublings)?
+#   - or lower than @ps voice count, which might require new logic or
+#     priority on the pitches?
+#   - inversion through "root_any" and then select only root 3rd or
+#     whatever afterwards?
+#   - nix octave_count and pitch_max in favor of just specified
+#     semitones up? - makes sense, as interval_adj_max is a semitone
+#     thing.
+#   - doublings could use more rules beyond "no" or "anything goes",
+#     perhaps optional list of "here's pitches that can be doubled" so
+#     can 2x the root or the 5th or whatever on demand.
+#   - logic tricky, could it be simplified with a Combinations module or
+#     by using ordering results from a glob() expansion?
+#   - callbacks so caller can better control the results?
+#
+# * progressions
+#   - support this, instead of using mcp-prog script?
+
 package Music::Chord::Positions;
 
 use strict;
@@ -8,7 +30,7 @@ use Exporter ();
 use List::MoreUtils qw(all uniq);
 use List::Util qw(max min);
 
-our $VERSION = '0.06';
+our $VERSION = '0.07';
 
 our ( @ISA, @EXPORT_OK, %EXPORT_TAGS );
 @ISA = qw(Exporter);
@@ -403,7 +425,9 @@ pitch chords, in which case the root pitch will be doubled:
 The chord voicings allowed by the default options may still not suit
 certain musical styles; for example, in SATB chorales, the bass alone is
 allowed to drift far from the other voices, but not both the bass and
-tenor from the upper voices.
+tenor from the upper voices. Voicings are not restricted by the limits
+of the human voice or for other instruments; checks of this nature would
+need to be done by the calling code on the results.
 
 =item B<chords2voices>( I<pitch set list> )
 
@@ -432,7 +456,7 @@ Jeremy Mates E<lt>jmates@cpan.orgE<gt>
 
 =head1 COPYRIGHT AND LICENSE
 
-Copyright (C) 2011 Jeremy Mates
+Copyright (C) 2011-2012 Jeremy Mates
 
 This library is free software; you can redistribute it and/or modify it
 under the same terms as Perl itself, either Perl version 5.14 or, at
