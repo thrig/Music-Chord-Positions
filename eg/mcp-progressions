@@ -12,6 +12,11 @@
 #
 #   mcp-progressions -t=2 -f=0.1 --ties --mode=major --key='d major' \
 #    --output=sequence I V VI III IV I IV V
+#
+# TODO really needs much more work, to allow 7ths, or 9ths, or
+# (optional?) inversions, or other chord naming schemes, or ideally
+# arbitrary pitch sets. (using automatic voicings or autochange or staff
+# changes would probably improve the lilypond output, too)
 
 use strict;
 use warnings;
@@ -78,14 +83,15 @@ GetOptions(
   'param|p=s'       => \%params,
   'ties'            => \$use_ties,
   'transpose|t=s'   => \$transpose,
-);
+) || print_help();
 @phrase = @ARGV;
 
 %interval_sets = (
-  '5th-major' => [ chord_pos( [qw/0 4 7/], %params ) ],
-  '5th-minor' => [ chord_pos( [qw/0 3 7/], %params ) ],
-  '5th-dim'   => [ chord_pos( [qw/0 3 6/], %params ) ],
-  '5th-aug'   => [ chord_pos( [qw/0 4 8/], %params ) ],
+  '5th-major' => [ chord_pos( [qw/0 4 7/],    %params ) ],
+  '5th-minor' => [ chord_pos( [qw/0 3 7/],    %params ) ],
+  '5th-dim'   => [ chord_pos( [qw/0 3 6/],    %params ) ],
+  '5th-aug'   => [ chord_pos( [qw/0 4 8/],    %params ) ],
+  '7th-dom'   => [ chord_pos( [qw/0 4 7 10/], %params ) ],
 );
 %Scale_Degs = (
   major => {
@@ -94,6 +100,7 @@ GetOptions(
     III => { ps => $interval_sets{'5th-minor'}, t => 4 },
     IV  => { ps => $interval_sets{'5th-major'}, t => 5 },
     V   => { ps => $interval_sets{'5th-major'}, t => 7 },
+#   V   => { ps => $interval_sets{'7th-dom'},   t => 7 },
     VI  => { ps => $interval_sets{'5th-minor'}, t => 9 },
     VII => { ps => $interval_sets{'5th-dim'},   t => 11 },
   },

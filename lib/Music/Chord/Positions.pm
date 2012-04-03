@@ -345,8 +345,8 @@ excluded, as will transpositions of the same voicing into higher
 registers.
 
 The default settings for C<chord_pos()> generate more voicings than may
-be permitted by music theory; a set more in line with conventional music
-theory would require the following options:
+be permitted by music theory; a set more in line with what Schoenberg
+outlines in his chord positions chapter would require something like:
 
   my @chords = chord_pos(
     [qw/0 4 7/],
@@ -354,6 +354,11 @@ theory would require the following options:
     no_partial_closed    =>  1, # exclude half open/closed positions
     pitch_max            => -1, # avoids 36 (c''') in Soprano
   );
+
+Though Schoenberg later on uses voicings the above would exclude when
+dealing with sevenths, so restrictions might be best done after
+reviewing the full list of resulting chords for the desired qualities,
+not starting from a limited set of assumed desired outcomes.
 
 The B<chord_pos> method can be influenced by the following parameters
 (default values are shown). Beware that removing restrictions may result
