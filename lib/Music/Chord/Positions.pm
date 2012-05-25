@@ -449,7 +449,7 @@ someone sneaks in support for alternate scale systems in behind my back.
 
 =head1 SEE ALSO
 
-L<Music::Chord::Note>
+L<Music::Chord::Note>, L<Music::AtonalUtil>
 
 B<Theory of Harmony> by Arnold Schoenberg (ISBN 978-0-520-26608-7).
 Whose simple chord voicing exercise prompted this not as simple
