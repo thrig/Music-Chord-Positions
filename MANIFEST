@@ -1,8 +1,9 @@
-Makefile.PL
+LICENSE
 MANIFEST
+Makefile.PL
 README
 eg/mcp2ly
+lib/Music/Chord/Positions.pm
 t/Music-Chord-Positions.t
 t/Schoenberg.t
 t/pod.t
-lib/Music/Chord/Positions.pm
