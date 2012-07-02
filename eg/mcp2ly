@@ -16,7 +16,7 @@ use File::Basename qw/basename/;
 use List::Util qw/shuffle sum/;
 use Getopt::Long qw/GetOptions/;
 use Music::Chord::Note ();
-use Music::Chord::Positions qw/:all/;
+use Music::Chord::Positions;
 use POSIX qw/floor/;
 
 my (
@@ -50,11 +50,6 @@ $transpose       = 0;
   5  => "'''''"
 );
 
-%modes = (
-  inv => \&chord_inv,
-  voc => \&chord_pos,
-);
-
 GetOptions(
   'conventional|c'  => \$is_conventional,
   'duration|D=s'    => \$duration,
@@ -66,13 +61,10 @@ GetOptions(
   'shuffle|s'       => \$shuffle,
   'transpose|t=s'   => \$transpose,
   'voice-count|v=s' => \$voice_count,
-);
-$mode = shift;
+) || print_help();
+$mode = 'chord_' . shift;
 
-if ( !defined $mode or !exists $modes{$mode} or !@ARGV ) {
-  print_help();
-  exit 64;
-}
+print_help() if !defined $mode or !@ARGV;
 
 if ($flats) {
   %pitch2note =
@@ -93,12 +85,12 @@ if ( $chord_spec =~ m/[A-Za-z()-]/ or $chord_spec =~ m/^\s*\d+\s*$/ ) {
   $pitch_set = \@pitches;
 }
 
+my $mcp = Music::Chord::Positions->new;
+
 # Get voice lines, convert to lilypond format, figure out what staff the
 # voices should be in. TODO messy, really should be templated or part of
 # the module.
 {
-  my ( @chords, @voices, @uv, @lv );
-
   if ($is_conventional) {
     my @ep = grep { $_ ne 'voice_count' } keys %params;
     delete @params{@ep};
@@ -113,23 +105,24 @@ if ( $chord_spec =~ m/[A-Za-z()-]/ or $chord_spec =~ m/^\s*\d+\s*$/ ) {
     $params{voice_count} = $voice_count;
   }
 
-  @chords = $modes{$mode}->( $pitch_set, %params );
-  die "no chords generated" unless @chords;
+  my $chords = $mcp->$mode( $pitch_set, %params );
+  die "no chords generated" unless @$chords;
 
   warn "notice: reverse and shuffle together? really?\n"
     if $shuffle and $reverse;
 
-  unshift @chords, $pitch_set unless $omit_orig;
-  @chords = shuffle @chords if $shuffle;
-  @chords = reverse @chords if $reverse;
-  @voices = chords2voices(@chords);
+  unshift @$chords, $pitch_set unless $omit_orig;
+  @$chords = shuffle @$chords if $shuffle;
+  @$chords = reverse @$chords if $reverse;
+  my $voices = $mcp->chords2voices($chords);
 
-  for my $voice (@voices) {
+  my ( @uv, @lv );
+  for my $voice (@$voices) {
     my ( @registers, $mean_reg_num );
     for my $pitch (@$voice) {
       $pitch += $transpose if $transpose;
-      my $ly_pitch = $pitch2note{ $pitch % scale_deg() };
-      my $reg_num  = floor( $pitch / scale_deg() );
+      my $ly_pitch = $pitch2note{ $pitch % $mcp->scale_degrees };
+      my $reg_num  = floor( $pitch / $mcp->scale_degrees );
       push @registers, $reg_num;
 
       $pitch = $ly_pitch . $registers{$reg_num};
@@ -223,6 +216,8 @@ Options:
   voice-count|v=s  How many voices to generate.
 
 END_USAGE
+
+  exit 64;
 }
 
 END {

@@ -27,17 +27,10 @@ use strict;
 use warnings;
 
 use Carp qw(croak);
-use Exporter ();
 use List::MoreUtils qw(all uniq);
 use List::Util qw(max min);
 
-our $VERSION = '0.08';
-
-our ( @ISA, @EXPORT_OK, %EXPORT_TAGS );
-@ISA = qw(Exporter);
-
-@EXPORT_OK = qw(&chord_inv &chord_pos &chords2voices &scale_deg);
-%EXPORT_TAGS = ( all => [qw(chord_inv chord_pos chords2voices scale_deg)] );
+our $VERSION = '0.50';
 
 my $DEG_IN_SCALE = 12;
 
@@ -45,20 +38,33 @@ my $DEG_IN_SCALE = 12;
 #
 # SUBROUTINES
 
+sub new {
+  my ( $class, %param ) = @_;
+  my $self = {};
+
+  $self->{_DEG_IN_SCALE} = int( $param{DEG_IN_SCALE} // $DEG_IN_SCALE );
+  if ( $self->{_DEG_IN_SCALE} < 2 ) {
+    croak("degrees in scale must be greater than one");
+  }
+
+  bless $self, $class;
+  return $self;
+}
+
+########################################################################
+#
+# Methods of Music
+
 sub chord_inv {
-  my ( $pitch_set, %params ) = @_;
+  my ( $self, $pitch_set, %params ) = @_;
   croak "pitch set reference required"
     unless defined $pitch_set and ref $pitch_set eq 'ARRAY';
 
-  my ( @inversions, $max_pitch, $next_register );
+  my $max_pitch = max(@$pitch_set);
+  my $next_register =
+    $max_pitch + $self->{_DEG_IN_SCALE} - $max_pitch % $self->{_DEG_IN_SCALE};
 
-  if ( exists $params{'voice_count'} ) {
-    die "voice_count not supported for inversions";
-  }
-
-  $max_pitch     = max(@$pitch_set);
-  $next_register = $max_pitch + $DEG_IN_SCALE - $max_pitch % $DEG_IN_SCALE;
-
+  my @inversions;
   for my $i ( 0 .. $#$pitch_set - 1 ) {
     # Inversions simply flip lower notes up above the highest pitch in
     # the original pitch set.
@@ -71,18 +77,26 @@ sub chord_inv {
     # Normalize to "0th" register if lowest pitch is an octave+ out
     if ( exists $params{'pitch_norm'} and $params{'pitch_norm'} ) {
       my $min_pitch = min( @{ $inversions[-1] } );
-      if ( $min_pitch >= $DEG_IN_SCALE ) {
-        my $offset = $min_pitch - $min_pitch % $DEG_IN_SCALE;
+      if ( $min_pitch >= $self->{_DEG_IN_SCALE} ) {
+        my $offset = $min_pitch - $min_pitch % $self->{_DEG_IN_SCALE};
         $_ -= $offset for @{ $inversions[-1] };
       }
     }
   }
 
-  return @inversions;
+  if ( exists $params{'inv_num'} ) {
+    croak "inversion number out of range"
+      if $params{'inv_num'} !~ m/^\d+$/
+        or $params{'inv_num'} < 1
+        or $params{'inv_num'} > @inversions;
+    @inversions = @{ $inversions[ $params{'inv_num'} - 1 ] };
+  }
+
+  return \@inversions;
 }
 
 sub chord_pos {
-  my ( $pitch_set, %params ) = @_;
+  my ( $self, $pitch_set, %params ) = @_;
   croak "pitch set reference required"
     unless defined $pitch_set and ref $pitch_set eq 'ARRAY';
 
@@ -106,7 +120,7 @@ sub chord_pos {
 
   if ( exists $params{'pitch_max'} and $params{'pitch_max'} < 1 ) {
     $params{'pitch_max'} =
-      ( $params{'octave_count'} + 1 ) * $DEG_IN_SCALE + $params{'pitch_max'};
+      ( $params{'octave_count'} + 1 ) * $self->{_DEG_IN_SCALE} + $params{'pitch_max'};
   }
 
   if ( exists $params{'voice_count'} ) {
@@ -120,9 +134,9 @@ sub chord_pos {
 
   @ps = sort { $a <=> $b } @$pitch_set;
 
-  $min_pitch_norm     = $ps[0] % $DEG_IN_SCALE;
-  $next_register      = $ps[-1] + ( $DEG_IN_SCALE - $ps[-1] % $DEG_IN_SCALE );
-  $unique_pitch_count = ( uniq( map { $_ % $DEG_IN_SCALE } @ps ) );
+  $min_pitch_norm     = $ps[0] % $self->{_DEG_IN_SCALE};
+  $next_register      = $ps[-1] + ( $self->{_DEG_IN_SCALE} - $ps[-1] % $self->{_DEG_IN_SCALE} );
+  $unique_pitch_count = ( uniq( map { $_ % $self->{_DEG_IN_SCALE} } @ps ) );
 
   if ( $params{'voice_count'} > @ps ) {
     my $doubled_count = $params{'voice_count'} - @ps;
@@ -135,7 +149,7 @@ sub chord_pos {
   @potentials = @ps;
   for my $i ( 1 .. $params{'octave_count'} ) {
     for my $n (@ps) {
-      my $p = $n + $i * $DEG_IN_SCALE;
+      my $p = $n + $i * $self->{_DEG_IN_SCALE};
       push @potentials, $p
         unless exists $params{'pitch_max'} and $p > $params{'pitch_max'};
     }
@@ -157,7 +171,7 @@ sub chord_pos {
 
       my %harmeq;
       for my $p (@chord) {
-        $harmeq{ $p % $DEG_IN_SCALE }++;
+        $harmeq{ $p % $self->{_DEG_IN_SCALE} }++;
       }
       unless ( exists $params{'no_limit_uniq'} and $params{'no_limit_uniq'} )
       {
@@ -222,7 +236,7 @@ sub chord_pos {
 
     unless ( exists $params{'root_any'} and $params{'root_any'} ) {
       while (
-        $potentials[ $voice_iters[0] ] % $DEG_IN_SCALE != $min_pitch_norm ) {
+        $potentials[ $voice_iters[0] ] % $self->{_DEG_IN_SCALE} != $min_pitch_norm ) {
         $voice_iters[0]++;
         last if $voice_iters[0] > $voice_max[0];
       }
@@ -236,29 +250,38 @@ sub chord_pos {
     }
   }
 
-  return @revoicings;
+  return \@revoicings;
 }
 
 # Change a pitch set collection (vertical) into voices (horizontal)
 sub chords2voices {
-  my (@pitch_sets) = @_;
-  croak "not a list of pitch sets" unless ref $pitch_sets[0] eq 'ARRAY';
+  my ($self, $pitch_sets) = @_;
+  croak "not a list of pitch sets" unless ref $pitch_sets->[0] eq 'ARRAY';
 
   # Nothing to swap, change nothing
-  return @pitch_sets if @pitch_sets < 2;
+  return $pitch_sets if @$pitch_sets < 2;
 
   my @voices;
-
-  for my $vi ( 0 .. $#{ $pitch_sets[0] } ) {
-    for my $j ( 0 .. $#pitch_sets ) {
-      push @{ $voices[$vi] }, $pitch_sets[$j][$vi];
+  for my $vi ( 0 .. $#{ $pitch_sets->[0] } ) {
+    for my $j ( 0 .. $#$pitch_sets ) {
+      push @{ $voices[$vi] }, $pitch_sets->[$j][$vi];
     }
   }
 
-  return reverse @voices;
+  return [ reverse @voices ];
 }
 
-sub scale_deg { $DEG_IN_SCALE }
+sub scale_degrees {
+  my ( $self, $dis ) = @_;
+  if ( defined $dis ) {
+    croak "scale degrees value must be positive integer greater than 1\n"
+      if !defined $dis
+        or $dis !~ /^\d+$/
+        or $dis < 2;
+    $self->{_DEG_IN_SCALE} = $dis;
+  }
+  return $self->{_DEG_IN_SCALE};
+}
 
 1;
 __END__
@@ -269,63 +292,77 @@ Music::Chord::Positions - generate various chord inversions and voicings
 
 =head1 SYNOPSIS
 
-  use Music::Chord::Positions qw/:all/;
+  TODO
 
-  my @inverses = chord_inv([0,4,7]);
-  my @voicings = chord_pos([0,4,7], voice_count => 4);
-
-  my @voices = chords2voices(@inverses);
-
-Interface may be subject to change without notice!
+Interface may be subject to change without notice! (And did between
+version 0.08 and subsequent for lightweight OOification.)
 
 =head1 DESCRIPTION
 
-Utility methods for generating inversions or chord voicing variations of
-a given pitch set. A pitch set is an array reference consisting of
-semitone intervals, for example:
+Utility methods for generating tonal inversions or chord voicing
+variations of a given pitch set. A pitch set is an array reference
+consisting of semitone intervals:
 
   [0, 4, 7]      # Major      C  E  G
   [0, 3, 7]      # minor      C  D# G
   [0, 4, 7, 11]  # Major 7th  C  E  G  B
 
-Or whatever. The pitch set may be specified manually, or the
-B<chord_num> method of L<Music::Chord::Note> used to derive a pitch set
-from a named chord.
+The pitch set may be specified manually, or the B<chord_num> method of
+L<Music::Chord::Note> used to derive a pitch set from a named chord.
 
-  use Music::Chord::Positions qw/:all/;
+  TODO
   use Music::Chord::Note;
 
   # These both result in the same output from chord_inv()
-  my @i1 = chord_inv([ 0,3,7                                   ]);
-  my @i2 = chord_inv([ Music::Chord::Note->new->chord_num('m') ]);
+  #my @i1 = chord_inv([ 0,3,7                                   ]);
+  #my @i2 = chord_inv([ Music::Chord::Note->new->chord_num('m') ]);
 
-Using the resulting pitch sets and so forth left as exercise to user;
-converting the semitones to L<MIDI::Simple> or voices to lilypond
-compatible output should not be too difficult (see the C<eg> directory
-of this module's distribution for sample scripts).
+This module pays more attention to the vertical spacing of notes than
+the more generalized routines from L<Music::AtonalUtil> do, and is more-or-
+less intended for mostly tonal uses.
 
-=head1 SUBROUTINES
+TODO describe how to use output, e.g. MIDI::Simple, lilypond e.g. scripts.
 
-Nothing exported by default. Use the fully qualified path, or import
-specific functions, or use the C<:all> import tag.
+=head1 METHODS
 
-=over 4
+By default, a 12-tone system is assumed.
 
-=item B<chord_inv>( I<pitch set reference>, I<list of optional paramters> ... )
-
-Generates inversions of the pitch set, returns a list of pitch sets
-(list of array references). The order of the results will be 1st
-inversion, 2nd inversion, etc.
-
-No transposition is performed, so inversions of 9ths or larger may
-result in a chord in a register above the original. If this is a
-problem, decrement the semitones in the pitch set by 12 or whatever.
-
-Parameter accepted (just one):
+Methods may croak or die, depending on whether there is a problem with
+the input or internal code; use L<Try::Tiny> or block C<eval> if this is
+an issue for your code.
 
 =over 4
 
-=item B<pitch_norm> => I<0>
+=item B<new>( I<parameter_pairs ...> )
+
+Constructor. The degrees in the scale can be adjusted via:
+
+  Music::Chord::Positions->new(DEG_IN_SCALE => 17);
+
+or some other positive integer greater than one, to use a non-12-tone
+basis for subsequent method calls. This value can be set or inspected
+via the B<scale_degrees> method.
+
+Note that non-default scale degrees have not be tested for correctness.
+
+=item B<chord_inv>( I<pitch_set>, I<optional key value paramters>, ... )
+
+Generates all inversions. By default, returns a reference to a list of
+pitch sets. The order will be 1st inversion, 2nd inversion, etc. No
+transposition is performed, so inversions of 9ths or larger may result
+in a chord in a register above the original. As alternatives, consider
+the B<circular_permute> or B<rotate> methods of L<Music::AtonalUtil>.
+
+Parameters accepted:
+
+=over 4
+
+=item B<inv_num> => I<positive integer>
+
+Returns a specific inversion by number (1 for first inversion, 2 for
+second, ...) as a pitch set. Will croak if invalid index supplied.
+
+=item B<pitch_norm> => I<boolean>
 
 If set and true, transposes inversions down if lowest pitch of said
 inversion is greater than the degrees in the scale.

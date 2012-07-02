@@ -1,5 +1,5 @@
 # Test whether can reproduce Schoenberg's allowed close and open
-# position chordsvia this module (which by default generates more
+# position chords via this module (which by default generates more
 # voicings than he allowed).
 #
 # (Standard deviation of the pitch sets, after the fundamental is
@@ -11,7 +11,7 @@ use strict;
 use warnings;
 
 use Test::More tests => 1;
-use Music::Chord::Positions qw/:all/;
+use Music::Chord::Positions;
 
 # From "Theory of Harmony", p.37. All are close position, excepting the
 # final three.
@@ -28,8 +28,8 @@ my %scho_allowed = (
   '0 16 24 31'  => undef,
 );
 
-my ( @chords, %results );
-@chords = chord_pos(
+my $mcp = Music::Chord::Positions->new;
+my $chords = $mcp->chord_pos(
   [qw/0 4 7/],
   allow_transpositions => 1,     # as SATB can transpose up
   no_partial_closed    => 1,     # exclude half open/closed positions
@@ -57,7 +57,7 @@ my ( @chords, %results );
 #  { min => 12, max => 33 },
 #);
 #
-#for my $ps (@chords) {
+#for my $ps (@$chords) {
 #  for my $i ( 0 .. $#$ps ) {
 #    if ( $ps->[$i] < $ranges[$i]->{min} or $ps->[$i] > $ranges[$i]->{max} ) {
 #      diag "out of range: @$ps";
@@ -65,7 +65,8 @@ my ( @chords, %results );
 #  }
 #}
 
-@results{ map { "@$_" } @chords } = ();
+my %results;
+@results{ map { "@$_" } @$chords } = ();
 
 # NOTE - this one transposition of (allowed) 0 12 16 19, excluded due to
 # problem of human voices singing it, or that Schoenberg just missed it?

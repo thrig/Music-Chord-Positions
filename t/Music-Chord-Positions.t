@@ -1,43 +1,50 @@
 use strict;
 use warnings;
 
-use Test::More tests => 8;
+use Test::More tests => 12;
 
 BEGIN { use_ok('Music::Chord::Positions') }
+
+my $mcp = Music::Chord::Positions->new;
+isa_ok( $mcp, 'Music::Chord::Positions' );
+
+is( $mcp->scale_degrees, 12, 'expect 12 degrees in scale by default' );
+
 can_ok( 'Music::Chord::Positions',
-  qw/chord_inv chord_pos chords2voices scale_deg/ );
+  qw/chord_inv chord_pos chords2voices scale_degrees/ );
 
 ########################################################################
 #
 # chord_inv tests
 
 # 5th should generate 1st and 2nd inversions
-my @inversions = Music::Chord::Positions::chord_inv( [ 0, 4, 7 ] );
+my $inversions = $mcp->chord_inv( [ 0, 4, 7 ] );
 is_deeply(
-  \@inversions,
+  $inversions,
   [ [ 4, 7, 12 ], [ 7, 12, 16 ] ],
-  'check inversions of 5th'
+  'all inversions of 5th'
 );
 
 # 7th - 1st, 2nd, and 3rd inversions
-@inversions = Music::Chord::Positions::chord_inv( [ 0, 4, 7, 11 ] );
+$inversions = $mcp->chord_inv( [ 0, 4, 7, 11 ] );
 is_deeply(
-  \@inversions,
+  $inversions,
   [ [ 4, 7, 11, 12 ], [ 7, 11, 12, 16 ], [ 11, 12, 16, 19 ] ],
-  'check inversions of 7th'
+  'all inversions of 7th'
 );
 
-# pitch_norm
-@inversions =
-  Music::Chord::Positions::chord_inv( [ 0, 4, 7, 10, 13 ], pitch_norm => 1 );
+$inversions = $mcp->chord_inv( [ 0, 4, 7, 11 ], inv_num => 1 );
+is_deeply( $inversions, [ 4, 7, 11, 12 ], 'first inversion of 7th' );
+
+$inversions = $mcp->chord_inv( [ 0, 4, 7, 10, 13 ], pitch_norm => 1 );
 is_deeply(
-  \@inversions,
+  $inversions,
   [ [ 4,  7,  10, 13, 24 ],
     [ 7,  10, 13, 24, 28 ],
     [ 10, 13, 24, 28, 31 ],
-    [ 1,  12, 16, 19, 22 ],
+    [ 1,  12, 16, 19, 22 ]
   ],
-  'inversion with pitch_norm'
+  'inversions with pitch_norm'
 );
 
 ########################################################################
@@ -53,13 +60,13 @@ is_deeply(
 # chords2voices tests
 
 is_deeply(
-  [ Music::Chord::Positions::chords2voices( [qw/1 2 3/], [qw/1 2 3/] ) ],
+  $mcp->chords2voices( [ [qw/1 2 3/], [qw/1 2 3/] ] ),
   [ [qw/3 3/], [qw/2 2/], [qw/1 1/] ],
-  'simple chord to voice switch'
+  'chord to voice switch'
 );
 is_deeply(
-  [ Music::Chord::Positions::chords2voices( [qw/1 2 3/] ) ],
-  [ [qw/1 2 3/] ],
+  $mcp->chords2voices( [[qw/1 2 3/]] ),
+  [[qw/1 2 3/]],
   'nothing for chords2voices to do'
 );
 
@@ -67,4 +74,8 @@ is_deeply(
 #
 # scale_deg test
 
-is( Music::Chord::Positions::scale_deg(), 12, 'degress in scale' );
+$mcp->scale_degrees(3);
+is( $mcp->scale_degrees, 3, 'set scale degrees by method' );
+
+my $mcp17 = Music::Chord::Positions->new( DEG_IN_SCALE => 17 );
+is( $mcp17->scale_degrees, 17, 'set scale degrees by constructors' );

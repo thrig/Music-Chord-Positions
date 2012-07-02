@@ -24,7 +24,7 @@ use warnings;
 use File::Basename qw/basename/;
 use Getopt::Long qw/GetOptions/;
 use List::Util qw/sum/;
-use Music::Chord::Positions qw/:all/;
+use Music::Chord::Positions;
 use POSIX qw/floor/;
 
 my (
@@ -86,12 +86,15 @@ GetOptions(
 ) || print_help();
 @phrase = @ARGV;
 
+my $mcp = Music::Chord::Positions->new;
+
+# TODO vov code could greatly simplify following static mess
 %interval_sets = (
-  '5th-major' => [ chord_pos( [qw/0 4 7/],    %params ) ],
-  '5th-minor' => [ chord_pos( [qw/0 3 7/],    %params ) ],
-  '5th-dim'   => [ chord_pos( [qw/0 3 6/],    %params ) ],
-  '5th-aug'   => [ chord_pos( [qw/0 4 8/],    %params ) ],
-  '7th-dom'   => [ chord_pos( [qw/0 4 7 10/], %params ) ],
+  '5th-major' => $mcp->chord_pos( [qw/0 4 7/],    %params ),
+  '5th-minor' => $mcp->chord_pos( [qw/0 3 7/],    %params ),
+  '5th-dim'   => $mcp->chord_pos( [qw/0 3 6/],    %params ),
+  '5th-aug'   => $mcp->chord_pos( [qw/0 4 8/],    %params ),
+  '7th-dom'   => $mcp->chord_pos( [qw/0 4 7 10/], %params ),
 );
 %Scale_Degs = (
   major => {
@@ -100,7 +103,6 @@ GetOptions(
     III => { ps => $interval_sets{'5th-minor'}, t => 4 },
     IV  => { ps => $interval_sets{'5th-major'}, t => 5 },
     V   => { ps => $interval_sets{'5th-major'}, t => 7 },
-#   V   => { ps => $interval_sets{'7th-dom'},   t => 7 },
     VI  => { ps => $interval_sets{'5th-minor'}, t => 9 },
     VII => { ps => $interval_sets{'5th-dim'},   t => 11 },
   },
@@ -182,7 +184,7 @@ die "error: no voicings generated (options too restrictive?)\n" if !@voices;
 warn "info: generated $phrase_count phrases\n";
 
 if ( !$output_file ) {
-  @voices = chords2voices(@voices);
+  @voices = @{ $mcp->chords2voices( \@voices ) };
   unless ( lyify( \@voices ) ) {
     warn "warning: problem emitting lilypond data\n";
     $exit_status = 1;
@@ -192,7 +194,7 @@ if ( !$output_file ) {
   my $file_count_pad = length int( $phrase_count / $output_file_max );
 
   while ( my @subset = splice( @voices, 0, $output_file_max * @phrase ) ) {
-    @subset = chords2voices(@subset);
+    @subset = @{ $mcp->chords2voices( \@subset ) };
     my $out_file = $output_file
       . sprintf( "%0*d", $file_count_pad, ++$file_counter ) . ".ly";
     open( my $out_fh, '>', $out_file )
@@ -288,8 +290,8 @@ sub lyify {
     my ( @registers, $mean_reg_num );
     for my $pi ( 0 .. $#$voice ) {
       $voice->[$pi] += $transpose if $transpose;
-      my $ly_pitch = $pitch2note{ $voice->[$pi] % scale_deg() };
-      my $reg_num  = floor( $voice->[$pi] / scale_deg() );
+      my $ly_pitch = $pitch2note{ $voice->[$pi] % $mcp->scale_degrees };
+      my $reg_num  = floor( $voice->[$pi] / $mcp->scale_degrees );
       push @registers, $reg_num;
 
       $voice->[$pi] = $ly_pitch . $registers{$reg_num};

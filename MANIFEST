@@ -2,6 +2,7 @@ LICENSE
 MANIFEST
 Makefile.PL
 README
+eg/mcp-progressions
 eg/mcp2ly
 lib/Music/Chord/Positions.pm
 t/Music-Chord-Positions.t
