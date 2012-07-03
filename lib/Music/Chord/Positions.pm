@@ -120,7 +120,8 @@ sub chord_pos {
 
   if ( exists $params{'pitch_max'} and $params{'pitch_max'} < 1 ) {
     $params{'pitch_max'} =
-      ( $params{'octave_count'} + 1 ) * $self->{_DEG_IN_SCALE} + $params{'pitch_max'};
+      ( $params{'octave_count'} + 1 ) * $self->{_DEG_IN_SCALE} +
+      $params{'pitch_max'};
   }
 
   if ( exists $params{'voice_count'} ) {
@@ -134,8 +135,9 @@ sub chord_pos {
 
   @ps = sort { $a <=> $b } @$pitch_set;
 
-  $min_pitch_norm     = $ps[0] % $self->{_DEG_IN_SCALE};
-  $next_register      = $ps[-1] + ( $self->{_DEG_IN_SCALE} - $ps[-1] % $self->{_DEG_IN_SCALE} );
+  $min_pitch_norm = $ps[0] % $self->{_DEG_IN_SCALE};
+  $next_register =
+    $ps[-1] + ( $self->{_DEG_IN_SCALE} - $ps[-1] % $self->{_DEG_IN_SCALE} );
   $unique_pitch_count = ( uniq( map { $_ % $self->{_DEG_IN_SCALE} } @ps ) );
 
   if ( $params{'voice_count'} > @ps ) {
@@ -235,8 +237,8 @@ sub chord_pos {
     }
 
     unless ( exists $params{'root_any'} and $params{'root_any'} ) {
-      while (
-        $potentials[ $voice_iters[0] ] % $self->{_DEG_IN_SCALE} != $min_pitch_norm ) {
+      while ( $potentials[ $voice_iters[0] ] % $self->{_DEG_IN_SCALE} !=
+        $min_pitch_norm ) {
         $voice_iters[0]++;
         last if $voice_iters[0] > $voice_max[0];
       }
@@ -255,7 +257,7 @@ sub chord_pos {
 
 # Change a pitch set collection (vertical) into voices (horizontal)
 sub chords2voices {
-  my ($self, $pitch_sets) = @_;
+  my ( $self, $pitch_sets ) = @_;
   croak "not a list of pitch sets" unless ref $pitch_sets->[0] eq 'ARRAY';
 
   # Nothing to swap, change nothing
@@ -292,7 +294,16 @@ Music::Chord::Positions - generate various chord inversions and voicings
 
 =head1 SYNOPSIS
 
-  TODO
+  use Music::Chord::Positions;
+  my $mcp = Music::Chord::Positions->new;
+
+  my $inversions = $mcp->chord_inv( [0, 3, 7]);
+  my $i6         = $mcp->chord_inv( [0, 3, 7], inv_num => 1 );
+  my $positions  = $mcp->chord_pos( [0, 3, 7]);
+
+  my $voices     = $mcp->chords2voices($positions);
+
+  $mcp->scale_degrees;  # returns 12 by default
 
 Interface may be subject to change without notice! (And did between
 version 0.08 and subsequent for lightweight OOification.)
@@ -310,26 +321,26 @@ consisting of semitone intervals:
 The pitch set may be specified manually, or the B<chord_num> method of
 L<Music::Chord::Note> used to derive a pitch set from a named chord.
 
-  TODO
   use Music::Chord::Note;
+  use Music::Chord::Positions;
 
   # These both result in the same output from chord_inv()
-  #my @i1 = chord_inv([ 0,3,7                                   ]);
-  #my @i2 = chord_inv([ Music::Chord::Note->new->chord_num('m') ]);
+  my $i1 = chord_inv([ 0,3,7                                   ]);
+  my $i2 = chord_inv([ Music::Chord::Note->new->chord_num('m') ]);
 
 This module pays more attention to the vertical spacing of notes than
 the more generalized routines from L<Music::AtonalUtil> do, and is more-or-
-less intended for mostly tonal uses.
+less intended for mostly tonal uses. Pitches are based from 0 up, a
+semitone per integer (unless B<scale_degrees> is customized to some non-12-
+tone system).
 
-TODO describe how to use output, e.g. MIDI::Simple, lilypond e.g. scripts.
+Look under the C<eg> directory for example scripts.
 
 =head1 METHODS
 
-By default, a 12-tone system is assumed.
-
 Methods may croak or die, depending on whether there is a problem with
-the input or internal code; use L<Try::Tiny> or block C<eval> if this is
-an issue for your code.
+the input or internal code; use L<Try::Tiny> or block C<eval> if this
+is an issue.
 
 =over 4
 
@@ -341,9 +352,8 @@ Constructor. The degrees in the scale can be adjusted via:
 
 or some other positive integer greater than one, to use a non-12-tone
 basis for subsequent method calls. This value can be set or inspected
-via the B<scale_degrees> method.
-
-Note that non-default scale degrees have not be tested for correctness.
+via the B<scale_degrees> method. (Note that non-default scale degrees
+have not been tested for correctness.)
 
 =item B<chord_inv>( I<pitch_set>, I<optional key value paramters>, ... )
 
@@ -360,33 +370,31 @@ Parameters accepted:
 =item B<inv_num> => I<positive integer>
 
 Returns a specific inversion by number (1 for first inversion, 2 for
-second, ...) as a pitch set. Will croak if invalid index supplied.
+second, ...) as a pitch set. Will croak if an invalid index is supplied.
 
 =item B<pitch_norm> => I<boolean>
 
-If set and true, transposes inversions down if lowest pitch of said
-inversion is greater than the degrees in the scale.
+If set and true, transposes the inversions down if the lowest pitch is
+greater than the degrees in the scale.
 
 =back
 
 =item B<chord_pos>( I<pitch set reference>, I<list of optional parameters> ... )
 
-Generate different voicings of a different chord, by default in
-registers two above the base. Returns list of pitch sets (list of array
-references) in who knows what order.
-
-Only voicings where the root remains in the root will be considered;
-chords that do not represent all pitches in the pitch set or chords that
-double non-root pitches will be excluded. Chords with intervals greater
-than 19 semitones (octave+fifth) between adjacent pitches will also be
-excluded, as will transpositions of the same voicing into higher
-registers.
+Generate different voicings of the same chord, by default between the
+root pitch and two registers above that. Returns a list of pitch sets
+(list of array references). Only voicings where the root remains the
+root will be considered; chords that do not represent all pitches in the
+pitch set or that double non-root pitches will also be excluded. Chords
+with intervals greater than 19 semitones (octave+fifth) between adjacent
+pitches will be excluded, as will transpositions of the same voicing
+into higher registers.
 
 The default settings for C<chord_pos()> generate more voicings than may
 be permitted by music theory; a set more in line with what Schoenberg
 outlines in his chord positions chapter would require something like:
 
-  my @chords = chord_pos(
+  my $chords = $mcp->chord_pos(
     [qw/0 4 7/],
     allow_transpositions =>  1, # as SATB can transpose up
     no_partial_closed    =>  1, # exclude half open/closed positions
@@ -395,8 +403,7 @@ outlines in his chord positions chapter would require something like:
 
 Though Schoenberg later on uses voicings the above would exclude when
 dealing with sevenths, so restrictions might be best done after
-reviewing the full list of resulting chords for the desired qualities,
-not starting from a limited set of assumed desired outcomes.
+reviewing the full list of resulting chords for the desired qualities.
 
 The B<chord_pos> method can be influenced by the following parameters
 (default values are shown). Beware that removing restrictions may result
@@ -461,7 +468,7 @@ voicings. At present, only one extra voice above the number of voices
 in the pitch set is implemented. Mostly to support SATB for three-
 pitch chords, in which case the root pitch will be doubled:
 
-  chord_pos([0,4,7], voice_count => 4);
+  $mcp->chord_pos([0,4,7], voice_count => 4);
 
 =back
 
@@ -469,19 +476,18 @@ The chord voicings allowed by the default options may still not suit
 certain musical styles; for example, in SATB chorales, the bass alone is
 allowed to drift far from the other voices, but not both the bass and
 tenor from the upper voices. Voicings are not restricted by the limits
-of the human voice or for other instruments; checks of this nature would
-need to be done by the calling code on the results.
+of the human voice or for other instruments.
 
-=item B<chords2voices>( I<pitch set list> )
+=item B<chords2voices>( [ I<pitch set list> ] )
 
 Accepts a pitch set list (such as returned by B<chord_pos>), transposes
 vertical chords into horizontal voices. Returns list of voices, highest
 to lowest. Returns the original pitch set list if nothing to transpose.
 
-=item B<scale_deg>( )
+=item B<scale_degrees>( )
 
-Returns number of degrees in the scale. Should always be 12, unless
-someone sneaks in support for alternate scale systems in behind my back.
+Returns the number of degrees in the scale. By default will be 12. Pass
+an integer greater than one to set a custom number of scale degrees.
 
 =back
 
