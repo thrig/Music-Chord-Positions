@@ -63,6 +63,7 @@ GetOptions(
   'voice-count|v=s' => \$voice_count,
 ) || print_help();
 $mode = 'chord_' . shift;
+$mode =~ s/voc/pos/;    # yay renames :/
 
 print_help() if !defined $mode or !@ARGV;
 
