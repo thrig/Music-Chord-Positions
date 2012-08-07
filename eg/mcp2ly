@@ -1,4 +1,4 @@
-#!/usr/bin/perl
+#!/usr/bin/env perl
 #
 # Accepts various inputs, applies Music::Chord::Positions functions to
 # that input, outputs lilypond data containing the results. Example:

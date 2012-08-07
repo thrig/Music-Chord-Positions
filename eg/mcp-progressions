@@ -1,4 +1,4 @@
-#!/usr/bin/perl
+#!/usr/bin/env perl
 #
 # Generate combinations of different chord voicings between different
 # scale degrees. (Using 'no_partial_closed' parameter to prevent awkward
