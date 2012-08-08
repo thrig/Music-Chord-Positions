@@ -8,8 +8,6 @@
 #
 # Warning! Some pitch sets and looser restriction rules will result in
 # massive numbers of voicings.
-#
-# XXX why isn't -v for voices working?
 
 use strict;
 use warnings;
@@ -104,7 +102,7 @@ my $mcp = Music::Chord::Positions->new;
 
   if ( $voice_count and exists $params{'voice_count'} ) {
     die "error: voice_count specified twice??\n";
-  } elsif ( $voice_count and $mode eq 'voc' ) {
+  } elsif ( $voice_count and $mode eq 'chord_pos' ) {
     $params{voice_count} = $voice_count;
   }
 
