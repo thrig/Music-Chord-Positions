@@ -8,6 +8,8 @@
 #
 # Warning! Some pitch sets and looser restriction rules will result in
 # massive numbers of voicings.
+#
+# XXX why isn't -v for voices working?
 
 use strict;
 use warnings;

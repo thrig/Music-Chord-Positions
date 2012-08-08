@@ -1,3 +1,5 @@
+XXX much bugfixing and refactoring and improvements (inversions, etc). left todo
+
 Module to generate chord inversions and different chord voicings.
 See the module perldocs for more information on usage, or eg/mcp2ly
 for a CLI tool.
