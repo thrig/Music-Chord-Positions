@@ -30,7 +30,7 @@ use Carp qw(croak);
 use List::MoreUtils qw(all uniq);
 use List::Util qw(max min);
 
-our $VERSION = '0.52';
+our $VERSION = '0.53';
 
 my $DEG_IN_SCALE = 12;
 
