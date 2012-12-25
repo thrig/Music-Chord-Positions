@@ -182,6 +182,8 @@ lower = {
 
 % XXX broken now with lilypond 2.15.30 due to
 % http://code.google.com/p/lilypond/issues/detail?id=2338
+%
+% though in 2.16 "markuplines" must instead be "markuplist" go figure
 %\\markuplines { \\paragraph {
 %@orig_args
 %} }
