@@ -23,8 +23,8 @@ Music::Chord::Note is optional but recommended.
 
 COPYRIGHT AND LICENCE
 
-Copyright (C) 2011 Jeremy Mates
+Copyright (C) 2011-2013 Jeremy Mates
 
 This library is free software; you can redistribute it and/or modify it
-under the same terms as Perl itself, either Perl version 5.14 or, at
+under the same terms as Perl itself, either Perl version 5.16 or, at
 your option, any later version of Perl 5 you may have available.

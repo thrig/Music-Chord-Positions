@@ -1,3 +1,5 @@
+#!perl
+#
 # Test whether can reproduce Schoenberg's allowed close and open
 # position chords via this module (which by default generates more
 # voicings than he allowed).

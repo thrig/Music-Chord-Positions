@@ -1,3 +1,5 @@
+# -*- Perl -*-
+#
 # TODO
 # * chord_pos
 #   - support arbitrary? voice counts (would need doubling rules?) Extra
@@ -30,7 +32,7 @@ use Carp qw(croak);
 use List::MoreUtils qw(all uniq);
 use List::Util qw(max min);
 
-our $VERSION = '0.54';
+our $VERSION = '0.55';
 
 my $DEG_IN_SCALE = 12;
 
@@ -518,10 +520,10 @@ Jeremy Mates E<lt>jmates@cpan.orgE<gt>
 
 =head1 COPYRIGHT AND LICENSE
 
-Copyright (C) 2011-2012 Jeremy Mates
+Copyright (C) 2011-2013 Jeremy Mates
 
 This library is free software; you can redistribute it and/or modify it
-under the same terms as Perl itself, either Perl version 5.14 or, at
+under the same terms as Perl itself, either Perl version 5.16 or, at
 your option, any later version of Perl 5 you may have available.
 
 =cut
