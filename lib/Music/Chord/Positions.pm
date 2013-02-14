@@ -278,7 +278,7 @@ sub chords2voices {
 sub scale_degrees {
   my ( $self, $dis ) = @_;
   if ( defined $dis ) {
-    croak "scale degrees value must be positive integer greater than 1\n"
+    croak "scale degrees value must be positive integer greater than 1"
       if !defined $dis
         or $dis !~ /^\d+$/
         or $dis < 2;
