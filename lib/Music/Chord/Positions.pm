@@ -28,7 +28,7 @@ use 5.010;
 use strict;
 use warnings;
 
-use Carp qw(croak);
+use Carp qw/croak/;
 use List::MoreUtils qw(all uniq);
 use List::Util qw(max min);
 
@@ -46,7 +46,7 @@ sub new {
 
   $self->{_DEG_IN_SCALE} = int( $param{DEG_IN_SCALE} // $DEG_IN_SCALE );
   if ( $self->{_DEG_IN_SCALE} < 2 ) {
-    croak("degrees in scale must be greater than one");
+    croak 'degrees in scale must be greater than one';
   }
 
   bless $self, $class;
@@ -59,7 +59,7 @@ sub new {
 
 sub chord_inv {
   my ( $self, $pitch_set, %params ) = @_;
-  croak "pitch set reference required"
+  croak 'pitch set reference required'
     unless defined $pitch_set and ref $pitch_set eq 'ARRAY';
 
   my $max_pitch = max(@$pitch_set);
@@ -87,7 +87,7 @@ sub chord_inv {
   }
 
   if ( exists $params{'inv_num'} ) {
-    croak "inversion number out of range"
+    croak 'inversion number out of range'
       if $params{'inv_num'} !~ m/^\d+$/
         or $params{'inv_num'} < 1
         or $params{'inv_num'} > @inversions;
@@ -99,7 +99,7 @@ sub chord_inv {
 
 sub chord_pos {
   my ( $self, $pitch_set, %params ) = @_;
-  croak "pitch set reference required"
+  croak 'pitch set reference required'
     unless defined $pitch_set and ref $pitch_set eq 'ARRAY';
 
   my (
@@ -260,7 +260,7 @@ sub chord_pos {
 # Change a pitch set collection (vertical) into voices (horizontal)
 sub chords2voices {
   my ( $self, $pitch_sets ) = @_;
-  croak "not a list of pitch sets" unless ref $pitch_sets->[0] eq 'ARRAY';
+  croak 'not a list of pitch sets' unless ref $pitch_sets->[0] eq 'ARRAY';
 
   # Nothing to swap, change nothing
   return $pitch_sets if @$pitch_sets < 2;
@@ -278,7 +278,7 @@ sub chords2voices {
 sub scale_degrees {
   my ( $self, $dis ) = @_;
   if ( defined $dis ) {
-    croak "scale degrees value must be positive integer greater than 1"
+    croak 'scale degrees value must be positive integer greater than 1'
       if !defined $dis
         or $dis !~ /^\d+$/
         or $dis < 2;
