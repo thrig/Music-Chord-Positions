@@ -18,6 +18,7 @@ use Getopt::Long qw/GetOptions/;
 use Music::Chord::Note ();
 use Music::Chord::Positions;
 use POSIX qw/floor/;
+use Try::Tiny;
 
 my (
   @orig_args,       %modes,           %params,
@@ -75,12 +76,12 @@ if ($flats) {
 $chord_spec = "@ARGV";
 
 if ( $chord_spec =~ m/[A-Za-z()-]/ or $chord_spec =~ m/^\s*\d+\s*$/ ) {
-  eval { $pitch_set = [ Music::Chord::Note->new->chord_num($chord_spec) ] };
-  if ($@) {
+  try { $pitch_set = [ Music::Chord::Note->new->chord_num($chord_spec) ] }
+  catch {
     warn
       "Music::Chord::Note could not parse '$chord_spec', see list in module src\n";
     exit 64;
-  }
+  };
 } else {
   my @pitches = $chord_spec =~ m/(\d+)/g;
   $pitch_set = \@pitches;

@@ -341,8 +341,7 @@ Look under the C<eg> directory for example scripts.
 =head1 METHODS
 
 Methods may croak or die, depending on whether there is a problem with
-the input or internal code; use L<Try::Tiny> or block C<eval> if this
-is an issue.
+the input or internal code; use L<Try::Tiny> if this is an issue.
 
 =over 4
 
