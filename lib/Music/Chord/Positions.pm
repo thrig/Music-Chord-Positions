@@ -17,7 +17,12 @@
 #     can 2x the root or the 5th or whatever on demand.
 #   - logic tricky, could it be simplified with a Combinations module or
 #     by using ordering results from a glob() expansion?
-#   - callbacks so caller can better control the results?
+#   - callbacks so caller can better control the results? (or filter
+#     results via counterpoint or other rules, e.g. to exclude || 5ths
+#     or other naughty things).
+#   - allow doubling of the third: frowned on, but sees frequent use
+#     e.g. in the Bach Chorales (if used properly, but rules would need
+#     to be enforced somehow else).
 #
 # * progressions
 #   - support this, instead of using mcp-prog script?
@@ -32,7 +37,7 @@ use Carp qw/croak/;
 use List::MoreUtils qw(all uniq);
 use List::Util qw(max min);
 
-our $VERSION = '0.55';
+our $VERSION = '0.60';
 
 my $DEG_IN_SCALE = 12;
 
@@ -89,8 +94,8 @@ sub chord_inv {
   if ( exists $params{'inv_num'} ) {
     croak 'inversion number out of range'
       if $params{'inv_num'} !~ m/^\d+$/
-        or $params{'inv_num'} < 1
-        or $params{'inv_num'} > @inversions;
+      or $params{'inv_num'} < 1
+      or $params{'inv_num'} > @inversions;
     @inversions = @{ $inversions[ $params{'inv_num'} - 1 ] };
   }
 
@@ -280,8 +285,8 @@ sub scale_degrees {
   if ( defined $dis ) {
     croak 'scale degrees value must be positive integer greater than 1'
       if !defined $dis
-        or $dis !~ /^\d+$/
-        or $dis < 2;
+      or $dis !~ /^\d+$/
+      or $dis < 2;
     $self->{_DEG_IN_SCALE} = $dis;
   }
   return $self->{_DEG_IN_SCALE};
@@ -330,18 +335,17 @@ L<Music::Chord::Note> used to derive a pitch set from a named chord.
   my $i1 = chord_inv([ 0,3,7                                   ]);
   my $i2 = chord_inv([ Music::Chord::Note->new->chord_num('m') ]);
 
-This module pays more attention to the vertical spacing of notes than
-the more generalized routines from L<Music::AtonalUtil> do, and is more-or-
-less intended for mostly tonal uses. Pitches are based from 0 up, a
-semitone per integer (unless B<scale_degrees> is customized to some non-12-
-tone system).
+This module pays attention to the vertical spacing of notes.
+Pitches are integers from 0 up, a semitone per integer, and the
+octave at 12 semitones (unless B<scale_degrees> is customized to
+some non-12-tone system).
 
-Look under the C<eg> directory for example scripts.
+Consult the C<eg> directory for example scripts.
 
 =head1 METHODS
 
-Methods may croak or die, depending on whether there is a problem with
-the input or internal code; use L<Try::Tiny> if this is an issue.
+Methods may C<croak> or C<die>, depending on whether there is a problem
+with the input or internal code; use L<Try::Tiny> if this is an issue.
 
 =over 4
 
@@ -353,16 +357,16 @@ Constructor. The degrees in the scale can be adjusted via:
 
 or some other positive integer greater than one, to use a non-12-tone
 basis for subsequent method calls. This value can be set or inspected
-via the B<scale_degrees> method. (Note that non-default scale degrees
-have not been tested for correctness.)
+via the B<scale_degrees> method. (Non-12-tone scale degrees have not
+been tested for correctness!)
 
-=item B<chord_inv>( I<pitch_set>, I<optional key value paramters>, ... )
+=item B<chord_inv>( I<pitch_set>, I<optional key value parameters>, ... )
 
-Generates all inversions. By default, returns a reference to a list of
-pitch sets. The order will be 1st inversion, 2nd inversion, etc. No
-transposition is performed, so inversions of 9ths or larger may result
-in a chord in a register above the original. As alternatives, consider
-the B<circular_permute> or B<rotate> methods of L<Music::AtonalUtil>.
+Generates all inversions. Returns a reference to a list of pitch sets.
+The order will be 1st inversion, 2nd inversion, etc. No transposition is
+performed, so inversions of 9ths or larger may result in a chord in a
+register above the original. As alternatives, consider the
+B<circular_permute> or B<rotate> methods of L<Music::AtonalUtil>.
 
 Parameters accepted:
 
@@ -370,30 +374,32 @@ Parameters accepted:
 
 =item B<inv_num> => I<positive integer>
 
-Returns a specific inversion by number (1 for first inversion, 2 for
-second, ...) as a pitch set. Will croak if an invalid index is supplied.
+Returns a specific inversion by number (1 for first inversion, 2
+for second, etc.) as a pitch set. Will C<croak> if an invalid index
+is supplied.
 
 =item B<pitch_norm> => I<boolean>
 
 If set and true, transposes the inversions down if the lowest pitch is
-greater than the degrees in the scale.
+greater than B<scale_degrees>.
 
 =back
 
 =item B<chord_pos>( I<pitch set reference>, I<list of optional parameters> ... )
 
 Generate different voicings of the same chord, by default between the
-root pitch and two registers above that. Returns a list of pitch sets
-(list of array references). Only voicings where the root remains the
-root will be considered; chords that do not represent all pitches in the
-pitch set or that double non-root pitches will also be excluded. Chords
-with intervals greater than 19 semitones (octave+fifth) between adjacent
+root pitch and two registers above that. Returns a reference to a list
+of pitch sets. Only voicings where the root remains the root will be
+considered; chords that do not represent all pitches in the pitch set or
+that double non-root pitches will also be excluded. Chords with
+intervals greater than 19 semitones (octave+fifth) between adjacent
 pitches will be excluded, as will transpositions of the same voicing
 into higher registers.
 
 The default settings for C<chord_pos()> generate more voicings than may
 be permitted by music theory; a set more in line with what Schoenberg
-outlines in his chord positions chapter would require something like:
+outlines in his chord positions chapter (in B<Theory of Harmony>) would
+require something like:
 
   my $chords = $mcp->chord_pos(
     [qw/0 4 7/],
@@ -415,7 +421,7 @@ in many, many, many different voicings for larger pitch sets.
 =item B<allow_transpositions> => I<0>
 
 If set and true, allows transpositions of identical pitch sets into
-higher registers. That is, permit both 0 4 7 and 12 16 19.
+higher registers. That is, permit both C<0 4 7> and C<12 16 19>.
 
 =item B<interval_adj_max> => I<19>
 
@@ -485,10 +491,10 @@ Accepts a pitch set list (such as returned by B<chord_pos>), transposes
 vertical chords into horizontal voices. Returns list of voices, highest
 to lowest. Returns the original pitch set list if nothing to transpose.
 
-=item B<scale_degrees>( )
+=item B<scale_degrees> [ I<positiveintegergreaterthanone> ]
 
-Returns the number of degrees in the scale. By default will be 12. Pass
-an integer greater than one to set a custom number of scale degrees.
+Returns the number of degrees in the scale. By default, 12. Pass an
+integer greater than one to set a custom number of scale degrees.
 
 =back
 
@@ -498,17 +504,18 @@ an integer greater than one to set a custom number of scale degrees.
 
 =item
 
-L<Music::Chord::Note> - get tone list from chord name.
+L<Music::Chord::Note> - get pitch list from chord name.
 
 =item
 
 L<Music::AtonalUtil> - Atonal musical utilities, some of which have use
 for tonal purposes, such as the B<rotate> method.
+L<Music::NeoRiemannianTonnetz> may also be of interest.
 
 =item
 
 B<Theory of Harmony> by Arnold Schoenberg (ISBN 978-0-520-26608-7).
-Whose simple chord voicing exercise prompted this not as simple
+Whose simple chord voicing exercise prompted this not so simple
 diversion in coding.
 
 =back

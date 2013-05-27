@@ -1,25 +1,27 @@
-XXX much bugfixing and refactoring and improvements (inversions, etc). left todo
-
 Module to generate chord inversions and different chord voicings.
 See the module perldocs for more information on usage, or eg/mcp2ly
 for a CLI tool.
 
-To install this module type the following:
+Install from CPAN:
 
-   perl Makefile.PL
-   make
-   make test
-   make install
+  cpan Music::Chord::Positions
 
-But really, why would you do that? Use cpan or cpanm, and
-local::lib, or snag the module from:
+Or the latest version:
 
-http://github.com/thrig/Music-Chord-Positions
+  git clone http://github.com/thrig/Music-Chord-Positions
+  cd Music-Chord-Positions
+  cpanm .
 
-DEPENDENCIES
+Or the old fashioned way:
 
-This module requires various Perl modules, as detailed in Makefile.PL.
-Music::Chord::Note is optional but recommended.
+  perl Makefile.PL
+  make
+  make test
+  make install
+
+TODO
+
+Much bugfixing and refactoring and improvements (inversions, etc).
 
 COPYRIGHT AND LICENCE
 

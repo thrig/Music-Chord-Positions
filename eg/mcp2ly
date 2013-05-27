@@ -1,10 +1,18 @@
 #!/usr/bin/env perl
 #
 # Accepts various inputs, applies Music::Chord::Positions functions to
-# that input, outputs lilypond data containing the results. Example:
+# that input, outputs lilypond data containing the results.
 #
-# mcp2ly inv 0 4 7 > inv.ly && lilypond inv.ly
-# mcp2ly -f 0.1 -x -v 4 voc 0 4 7 > voc.ly && lilypond voc.ly
+#   mcp2ly                inv 0 4 7 > inv.ly && lilypond inv.ly
+#   mcp2ly -f 0.1 -x -v 4 pos 0 4 7 > pos.ly && lilypond pos.ly
+#
+# Forte numbers (via Music::AtonalUtil) or chord names (via
+# Music::Chord::Note) are accepted. Non-root-position chords will
+# require manual pitch lists, as the lowest pitch number is used as
+# root; compare, for example:
+#
+#   mcp2ly pos 7 0  1  2
+#   mcp2ly pos 7 12 13 14
 #
 # Warning! Some pitch sets and looser restriction rules will result in
 # massive numbers of voicings.
@@ -15,10 +23,13 @@ use warnings;
 use File::Basename qw/basename/;
 use List::Util qw/shuffle sum/;
 use Getopt::Long qw/GetOptions/;
+use Music::AtonalUtil  ();
 use Music::Chord::Note ();
 use Music::Chord::Positions;
 use POSIX qw/floor/;
 use Try::Tiny;
+
+my $FORTE_NUMBER_RE = qr/[3-9]-[zZ]?\d{1,2}/;
 
 my (
   @orig_args,       %modes,           %params,
@@ -29,6 +40,8 @@ my (
   $omit_orig,       $pitch_set,       $reverse,
   $shuffle,         $transpose,       $voice_count,
 );
+
+my $atu = Music::AtonalUtil->new;
 
 @orig_args = ( map { $_ =~ tr/"/'/; $_ } basename($0), @ARGV );
 
@@ -62,9 +75,9 @@ GetOptions(
   'shuffle|s'       => \$shuffle,
   'transpose|t=s'   => \$transpose,
   'voice-count|v=s' => \$voice_count,
-) || print_help();
-$mode = 'chord_' . shift;
-$mode =~ s/voc/pos/;    # yay renames :/
+) or print_help();
+$mode = 'chord_' . ( shift // '' );
+$mode =~ s/(voc|voice)$/pos/;
 
 print_help() if !defined $mode or !@ARGV;
 
@@ -75,7 +88,10 @@ if ($flats) {
 
 $chord_spec = "@ARGV";
 
-if ( $chord_spec =~ m/[A-Za-z()-]/ or $chord_spec =~ m/^\s*\d+\s*$/ ) {
+if ( $chord_spec =~ m/($FORTE_NUMBER_RE)/ ) {
+  $pitch_set = $atu->forte2pcs($1);
+  die "unknown Forte Number '$chord_spec'\n" if !defined $pitch_set;
+} elsif ( $chord_spec =~ m/[A-Za-z()-]/ or $chord_spec =~ m/^\s*\d+\s*$/ ) {
   try { $pitch_set = [ Music::Chord::Note->new->chord_num($chord_spec) ] }
   catch {
     warn
@@ -147,9 +163,7 @@ my $mcp = Music::Chord::Positions->new;
   }
 }
 
-if ( lyify() ) {
-  exit 0;
-}
+exit if lyify();
 die "warning: problem emitting lilypond data\n";
 
 ########################################################################
@@ -159,12 +173,6 @@ die "warning: problem emitting lilypond data\n";
 sub lyify {
   print <<"END_TMPL";
 \\version "2.12.0"
-
-% XXX broken now with lilypond 2.15.30 due to
-% http://code.google.com/p/lilypond/issues/detail?id=2338
-%#(define-markup-list-command (paragraph layout props args) (markup-list?)
-% (interpret-markup-list layout props
-%   (make-justified-lines-markup-list (cons (make-hspace-markup 2) args))))
 
 \\header {
   title    = "Pitch set: @$pitch_set"
@@ -181,14 +189,6 @@ lower = {
   $ly_lower_voices
 }
 
-% XXX broken now with lilypond 2.15.30 due to
-% http://code.google.com/p/lilypond/issues/detail?id=2338
-%
-% though in 2.16 "markuplines" must instead be "markuplist" go figure
-%\\markuplines { \\paragraph {
-%@orig_args
-%} }
-
 \\score {
   \\new PianoStaff <<
     \\new Staff = "upper" \\upper
@@ -197,12 +197,15 @@ lower = {
   \\layout { }
   \\midi { }
 }
+
+\\markup { Generated via: @orig_args }
+
 END_TMPL
 }
 
 sub print_help {
   warn <<"END_USAGE";
-Usage: $0 [options] inv|voc
+Usage: $0 [options] inv|pos
 
 Generates chord inversions or voicings in lilypond format to stdout.
 
@@ -230,4 +233,3 @@ END {
     exit 74;
   }
 }
-

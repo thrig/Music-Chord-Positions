@@ -1,8 +1,8 @@
 #!/usr/bin/env perl
 #
 # Generate combinations of different chord voicings between different
-# scale degrees. (Using 'no_partial_closed' parameter to prevent awkward
-# 3rds in middle of otherwise open chord.) Example:
+# scale degrees, and using the 'no_partial_closed' parameter to prevent
+# awkward 3rds in middle of otherwise open chords.
 #
 #   mcp-progressions --mode=minor --key='c minor' --flats \
 #    --max-leap=7 --max-root-leap=8   I VI     > minor-I-VI.ly
@@ -297,8 +297,8 @@ sub lyify {
       $voice->[$pi] = $ly_pitch . $registers{$reg_num};
       $voice->[ $pi - 1 ] .= '~'
         if $use_ties
-          and $voice->[ $pi - 1 ] eq $voice->[$pi]
-          and $pi % @phrase != 0;
+        and $voice->[ $pi - 1 ] eq $voice->[$pi]
+        and $pi % @phrase != 0;
     }
     my $mean_register = floor( sum(@registers) / @$voice + $fudge );
 
@@ -328,10 +328,6 @@ sub lyify {
   print <<"END_TMPL";
 \\version "2.14.0"
 
-#(define-markup-list-command (paragraph layout props args) (markup-list?)
- (interpret-markup-list layout props
-   (make-justified-lines-markup-list (cons (make-hspace-markup 2) args))))
-
 \\header {
   title    = "@phrase in $Mode"
   subtitle = "Music::Chord::Positions v.$Music::Chord::Positions::VERSION"
@@ -353,10 +349,6 @@ lower = {
   $ly_lower_voices
 }
 
-\\markuplines { \\paragraph {
-@orig_args
-} }
-
 \\score {
   \\new PianoStaff <<
     \\set Score.midiChannelMapping = #'instrument
@@ -369,9 +361,7 @@ lower = {
   \\midi { }
 }
 
-\\markuplines { \\paragraph {
-Progressions derived from methods outlined in \\underline "Theory of Harmony" by Schoenberg.
-} }
+\\markup { @orig_args }
 END_TMPL
 }
 
