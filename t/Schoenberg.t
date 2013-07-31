@@ -13,6 +13,10 @@ use strict;
 use warnings;
 
 use Test::More tests => 1;
+
+eval 'use Test::Differences';    # display convenience
+my $deeply = $@ ? \&is_deeply : \&eq_or_diff;
+
 use Music::Chord::Positions;
 
 # From "Theory of Harmony", p.37. All are close position, excepting the
@@ -30,7 +34,7 @@ my %scho_allowed = (
   '0 16 24 31'  => undef,
 );
 
-my $mcp = Music::Chord::Positions->new;
+my $mcp    = Music::Chord::Positions->new;
 my $chords = $mcp->chord_pos(
   [qw/0 4 7/],
   allow_transpositions => 1,     # as SATB can transpose up
@@ -74,4 +78,4 @@ my %results;
 # problem of human voices singing it, or that Schoenberg just missed it?
 delete $results{"12 24 28 31"};
 
-is_deeply( \%results, \%scho_allowed, 'just Schoenberg allowed voicings' );
+$deeply->( \%results, \%scho_allowed, 'just Schoenberg allowed voicings' );

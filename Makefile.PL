@@ -11,7 +11,6 @@ my %params = (
   VERSION_FROM => 'lib/Music/Chord/Positions.pm',
   PREREQ_PM    => {
     Carp                 => 0,
-    'List::MoreUtils'    => 0,
     'List::Util'         => 0,
     'Music::Chord::Note' => 0,    # nice to have, but not essential
     'Test::More'         => 0,

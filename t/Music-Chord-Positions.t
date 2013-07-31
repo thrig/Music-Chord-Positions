@@ -5,6 +5,9 @@ use warnings;
 
 use Test::More tests => 12;
 
+eval 'use Test::Differences';    # display convenience
+my $deeply = $@ ? \&is_deeply : \&eq_or_diff;
+
 BEGIN { use_ok('Music::Chord::Positions') }
 
 my $mcp = Music::Chord::Positions->new;
@@ -21,7 +24,7 @@ can_ok( 'Music::Chord::Positions',
 
 # 5th should generate 1st and 2nd inversions
 my $inversions = $mcp->chord_inv( [ 0, 4, 7 ] );
-is_deeply(
+$deeply->(
   $inversions,
   [ [ 4, 7, 12 ], [ 7, 12, 16 ] ],
   'all inversions of 5th'
@@ -29,17 +32,17 @@ is_deeply(
 
 # 7th - 1st, 2nd, and 3rd inversions
 $inversions = $mcp->chord_inv( [ 0, 4, 7, 11 ] );
-is_deeply(
+$deeply->(
   $inversions,
   [ [ 4, 7, 11, 12 ], [ 7, 11, 12, 16 ], [ 11, 12, 16, 19 ] ],
   'all inversions of 7th'
 );
 
 $inversions = $mcp->chord_inv( [ 0, 4, 7, 11 ], inv_num => 1 );
-is_deeply( $inversions, [ 4, 7, 11, 12 ], 'first inversion of 7th' );
+$deeply->( $inversions, [ 4, 7, 11, 12 ], 'first inversion of 7th' );
 
 $inversions = $mcp->chord_inv( [ 0, 4, 7, 10, 13 ], pitch_norm => 1 );
-is_deeply(
+$deeply->(
   $inversions,
   [ [ 4,  7,  10, 13, 24 ],
     [ 7,  10, 13, 24, 28 ],
@@ -61,14 +64,14 @@ is_deeply(
 #
 # chords2voices tests
 
-is_deeply(
+$deeply->(
   $mcp->chords2voices( [ [qw/1 2 3/], [qw/1 2 3/] ] ),
   [ [qw/3 3/], [qw/2 2/], [qw/1 1/] ],
   'chord to voice switch'
 );
-is_deeply(
-  $mcp->chords2voices( [[qw/1 2 3/]] ),
-  [[qw/1 2 3/]],
+$deeply->(
+  $mcp->chords2voices( [ [qw/1 2 3/] ] ),
+  [ [qw/1 2 3/] ],
   'nothing for chords2voices to do'
 );
 

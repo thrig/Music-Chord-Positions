@@ -34,16 +34,25 @@ use strict;
 use warnings;
 
 use Carp qw/croak/;
-use List::MoreUtils qw(all uniq);
 use List::Util qw(max min);
 
-our $VERSION = '0.61';
+our $VERSION = '0.62';
 
 my $DEG_IN_SCALE = 12;
 
 ########################################################################
 #
 # SUBROUTINES
+
+# TODO move back to List::MoreUtils if that module is fixed up or some
+# replacement with fewer open critical bugs is written.
+sub all(&@) {
+  my $test = shift;
+  for (@_) {
+    return 0 unless &$test;
+  }
+  return 1;
+}
 
 sub new {
   my ( $class, %param ) = @_;
@@ -145,7 +154,11 @@ sub chord_pos {
   $min_pitch_norm = $ps[0] % $self->{_DEG_IN_SCALE};
   $next_register =
     $ps[-1] + ( $self->{_DEG_IN_SCALE} - $ps[-1] % $self->{_DEG_IN_SCALE} );
-  $unique_pitch_count = ( uniq( map { $_ % $self->{_DEG_IN_SCALE} } @ps ) );
+  {
+    my %seen_pitch;
+    @seen_pitch{ map { $_ % $self->{_DEG_IN_SCALE} } @ps } = ();
+    $unique_pitch_count = keys %seen_pitch;
+  }
 
   if ( $params{'voice_count'} > @ps ) {
     my $doubled_count = $params{'voice_count'} - @ps;
@@ -163,7 +176,9 @@ sub chord_pos {
         unless exists $params{'pitch_max'} and $p > $params{'pitch_max'};
     }
   }
-  @potentials = uniq sort { $a <=> $b } @potentials;
+  my %uniq_pots;
+  @uniq_pots{@potentials} = ();
+  @potentials = sort { $a <=> $b } keys %uniq_pots;
 
   for my $i ( 0 .. $params{'voice_count'} - 1 ) {
     $voice_iters[$i] = $i;
