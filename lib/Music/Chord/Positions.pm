@@ -36,7 +36,7 @@ use warnings;
 use Carp qw/croak/;
 use List::Util qw(max min);
 
-our $VERSION = '0.62';
+our $VERSION = '0.63';
 
 my $DEG_IN_SCALE = 12;
 

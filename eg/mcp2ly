@@ -29,8 +29,6 @@ use Music::Chord::Positions;
 use POSIX qw/floor/;
 use Try::Tiny;
 
-my $FORTE_NUMBER_RE = qr/[3-9]-[zZ]?\d{1,2}/;
-
 my (
   @orig_args,       %modes,           %params,
   %pitch2note,      %registers,       $LY_DEFAULT_DURATION,
@@ -42,6 +40,7 @@ my (
 );
 
 my $atu = Music::AtonalUtil->new;
+my $FORTE_NUMBER_RE = $atu->forte_number_re;
 
 @orig_args = ( map { $_ =~ tr/"/'/; $_ } basename($0), @ARGV );
 
