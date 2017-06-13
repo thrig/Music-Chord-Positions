@@ -35,14 +35,33 @@ use warnings;
 
 use Carp qw/croak/;
 use List::Util qw(max min);
+use Moo;
+use namespace::clean;
 
-our $VERSION = '0.64';
+our $VERSION = '1.00';
 
-my $DEG_IN_SCALE = 12;
+##############################################################################
+#
+# ATTRIBUTES
+
+# TODO probably should come from a parent class as see also e.g. Music::Canon
+has DEG_IN_SCALE => (
+  is     => 'rw',
+  coerce => sub {
+    die "scale degrees must be integer greater than 1"
+      if !defined $_[0]
+      or !looks_like_number $_[0]
+      or $_[0] < 2;
+    int $_[0];
+  },
+  default => sub {
+    12;
+  },
+);
 
 ########################################################################
 #
-# SUBROUTINES
+# METHODS
 
 # TODO move back to List::MoreUtils if that module is fixed up or some
 # replacement with fewer open critical bugs is written.
@@ -54,31 +73,14 @@ sub all(&@) {
   return 1;
 }
 
-sub new {
-  my ( $class, %param ) = @_;
-  my $self = {};
-
-  $self->{_DEG_IN_SCALE} = int( $param{DEG_IN_SCALE} // $DEG_IN_SCALE );
-  if ( $self->{_DEG_IN_SCALE} < 2 ) {
-    croak 'degrees in scale must be greater than one';
-  }
-
-  bless $self, $class;
-  return $self;
-}
-
-########################################################################
-#
-# Methods of Music
-
 sub chord_inv {
   my ( $self, $pitch_set, %params ) = @_;
-  croak 'pitch set reference required'
+  croak "pitch set reference required"
     unless defined $pitch_set and ref $pitch_set eq 'ARRAY';
 
   my $max_pitch = max(@$pitch_set);
   my $next_register =
-    $max_pitch + $self->{_DEG_IN_SCALE} - $max_pitch % $self->{_DEG_IN_SCALE};
+    $max_pitch + $self->DEG_IN_SCALE - $max_pitch % $self->DEG_IN_SCALE;
 
   my @inversions;
   for my $i ( 0 .. $#$pitch_set - 1 ) {
@@ -93,8 +95,8 @@ sub chord_inv {
     # Normalize to "0th" register if lowest pitch is an octave+ out
     if ( exists $params{'pitch_norm'} and $params{'pitch_norm'} ) {
       my $min_pitch = min( @{ $inversions[-1] } );
-      if ( $min_pitch >= $self->{_DEG_IN_SCALE} ) {
-        my $offset = $min_pitch - $min_pitch % $self->{_DEG_IN_SCALE};
+      if ( $min_pitch >= $self->DEG_IN_SCALE ) {
+        my $offset = $min_pitch - $min_pitch % $self->DEG_IN_SCALE;
         $_ -= $offset for @{ $inversions[-1] };
       }
     }
@@ -136,7 +138,7 @@ sub chord_pos {
 
   if ( exists $params{'pitch_max'} and $params{'pitch_max'} < 1 ) {
     $params{'pitch_max'} =
-      ( $params{'octave_count'} + 1 ) * $self->{_DEG_IN_SCALE} +
+      ( $params{'octave_count'} + 1 ) * $self->DEG_IN_SCALE +
       $params{'pitch_max'};
   }
 
@@ -151,12 +153,12 @@ sub chord_pos {
 
   @ps = sort { $a <=> $b } @$pitch_set;
 
-  $min_pitch_norm = $ps[0] % $self->{_DEG_IN_SCALE};
+  $min_pitch_norm = $ps[0] % $self->DEG_IN_SCALE;
   $next_register =
-    $ps[-1] + ( $self->{_DEG_IN_SCALE} - $ps[-1] % $self->{_DEG_IN_SCALE} );
+    $ps[-1] + ( $self->DEG_IN_SCALE - $ps[-1] % $self->DEG_IN_SCALE );
   {
     my %seen_pitch;
-    @seen_pitch{ map { $_ % $self->{_DEG_IN_SCALE} } @ps } = ();
+    @seen_pitch{ map { $_ % $self->DEG_IN_SCALE } @ps } = ();
     $unique_pitch_count = keys %seen_pitch;
   }
 
@@ -171,7 +173,7 @@ sub chord_pos {
   @potentials = @ps;
   for my $i ( 1 .. $params{'octave_count'} ) {
     for my $n (@ps) {
-      my $p = $n + $i * $self->{_DEG_IN_SCALE};
+      my $p = $n + $i * $self->DEG_IN_SCALE;
       push @potentials, $p
         unless exists $params{'pitch_max'} and $p > $params{'pitch_max'};
     }
@@ -195,7 +197,7 @@ sub chord_pos {
 
       my %harmeq;
       for my $p (@chord) {
-        $harmeq{ $p % $self->{_DEG_IN_SCALE} }++;
+        $harmeq{ $p % $self->DEG_IN_SCALE }++;
       }
       unless ( exists $params{'no_limit_uniq'} and $params{'no_limit_uniq'} )
       {
@@ -259,7 +261,7 @@ sub chord_pos {
     }
 
     unless ( exists $params{'root_any'} and $params{'root_any'} ) {
-      while ( $potentials[ $voice_iters[0] ] % $self->{_DEG_IN_SCALE} !=
+      while ( $potentials[ $voice_iters[0] ] % $self->DEG_IN_SCALE !=
         $min_pitch_norm ) {
         $voice_iters[0]++;
         last if $voice_iters[0] > $voice_max[0];
@@ -295,18 +297,6 @@ sub chords2voices {
   return [ reverse @voices ];
 }
 
-sub scale_degrees {
-  my ( $self, $dis ) = @_;
-  if ( defined $dis ) {
-    croak 'scale degrees value must be positive integer greater than 1'
-      if !defined $dis
-      or $dis !~ /^\d+$/
-      or $dis < 2;
-    $self->{_DEG_IN_SCALE} = $dis;
-  }
-  return $self->{_DEG_IN_SCALE};
-}
-
 1;
 __END__
 
@@ -324,8 +314,6 @@ Music::Chord::Positions - generate various chord inversions and voicings
   my $positions  = $mcp->chord_pos( [0, 3, 7]);
 
   my $voices     = $mcp->chords2voices($positions);
-
-  $mcp->scale_degrees;  # returns 12 by default
 
 Interface may be subject to change without notice! (And did between
 version 0.08 and subsequent for lightweight OOification.)
@@ -350,10 +338,10 @@ L<Music::Chord::Note> used to derive a pitch set from a named chord.
   my $i1 = chord_inv([ 0,3,7                                   ]);
   my $i2 = chord_inv([ Music::Chord::Note->new->chord_num('m') ]);
 
-This module pays attention to the vertical spacing of notes.
-Pitches are integers from 0 up, a semitone per integer, and the
-octave at 12 semitones (unless B<scale_degrees> is customized to
-some non-12-tone system).
+This module pays attention to the vertical spacing of notes (in
+contrast to L<Music::AtonalUtil>). Pitches are integers from 0 up, a
+semitone per integer, and the octave at 12 semitones (unless
+B<DEG_IN_SCALE> is changed).
 
 Consult the C<eg> directory for example scripts.
 
@@ -371,8 +359,7 @@ Constructor. The degrees in the scale can be adjusted via:
   Music::Chord::Positions->new(DEG_IN_SCALE => 17);
 
 or some other positive integer greater than one, to use a non-12-tone
-basis for subsequent method calls. This value can be set or inspected
-via the B<scale_degrees> method. (Non-12-tone scale degrees have not
+basis for subsequent method calls. (Non-12-tone scale degrees have not
 been tested for correctness!)
 
 =item B<chord_inv>( I<pitch_set>, I<optional key value parameters>, ... )
@@ -506,11 +493,6 @@ Accepts a pitch set list (such as returned by B<chord_pos>), transposes
 vertical chords into horizontal voices. Returns list of voices, highest
 to lowest. Returns the original pitch set list if nothing to transpose.
 
-=item B<scale_degrees> [ I<positiveintegergreaterthanone> ]
-
-Returns the number of degrees in the scale. By default, 12. Pass an
-integer greater than one to set a custom number of scale degrees.
-
 =back
 
 =head1 SEE ALSO
@@ -519,13 +501,13 @@ integer greater than one to set a custom number of scale degrees.
 
 =item
 
-L<Music::Chord::Note> - get pitch list from chord name.
-
-=item
-
 L<Music::AtonalUtil> - Atonal musical utilities, some of which have use
 for tonal purposes, such as the B<rotate> method.
 L<Music::NeoRiemannianTonnetz> may also be of interest.
+
+=item
+
+L<Music::Chord::Note> - get pitch list from chord name.
 
 =item
 
@@ -541,10 +523,9 @@ thrig - Jeremy Mates (cpan:JMATES) C<< <jmates at cpan.org> >>
 
 =head1 COPYRIGHT AND LICENSE
 
-Copyright (C) 2011-2013 Jeremy Mates
+Copyright (C) 2011-2013,2015 Jeremy Mates
 
-This library is free software; you can redistribute it and/or modify it
-under the same terms as Perl itself, either Perl version 5.16 or, at
-your option, any later version of Perl 5 you may have available.
+This module is free software; you can redistribute it and/or modify it
+under the Artistic License (2.0).
 
 =cut

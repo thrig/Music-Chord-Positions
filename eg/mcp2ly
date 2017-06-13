@@ -27,7 +27,6 @@ use Music::AtonalUtil  ();
 use Music::Chord::Note ();
 use Music::Chord::Positions;
 use POSIX qw/floor/;
-use Try::Tiny;
 
 my (
   @orig_args,       %modes,           %params,
@@ -91,12 +90,12 @@ if ( $chord_spec =~ m/($FORTE_NUMBER_RE)/ ) {
   $pitch_set = $atu->forte2pcs($1);
   die "unknown Forte Number '$chord_spec'\n" if !defined $pitch_set;
 } elsif ( $chord_spec =~ m/[A-Za-z()-]/ or $chord_spec =~ m/^\s*\d+\s*$/ ) {
-  try { $pitch_set = [ Music::Chord::Note->new->chord_num($chord_spec) ] }
-  catch {
+  eval { $pitch_set = [ Music::Chord::Note->new->chord_num($chord_spec) ] };
+  if ($@) {
     warn
       "Music::Chord::Note could not parse '$chord_spec', see list in module src\n";
     exit 64;
-  };
+  }
 } else {
   my @pitches = $chord_spec =~ m/(\d+)/g;
   $pitch_set = \@pitches;
